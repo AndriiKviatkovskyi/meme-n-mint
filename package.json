@@ -1,0 +1,12 @@
+{
+  "name": "meme-n-mint",
+  "version": "1.0.0",
+  "description": "Meme-based NFT marketplace",
+  "license": "ISC",
+  "author": "Andrii Kviatkovskyi",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
