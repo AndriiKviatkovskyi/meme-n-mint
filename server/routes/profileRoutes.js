@@ -36,7 +36,7 @@ router.get('/api/usernames', async (req, res) => {
     }
   });
 
-  
+
   router.post('/api/usernames', async (req, res) => {
     const { walletAddress } = req.query;
     const { desiredUsername } = req.body;

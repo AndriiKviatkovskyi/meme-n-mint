@@ -1,7 +1,8 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import mintRoutes from './routes/mintRoutes.js';
+import mintRoutes from './routes/nftRoutes.js';
+import profileRoutes from './routes/profileRoutes.js';
 import pool from './database/database.js';
 
 const app = express();
@@ -11,6 +12,7 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(cors());
 
 app.use('/', mintRoutes);
+app.use('/', profileRoutes);
 
 async function createNftTable() {
   try {

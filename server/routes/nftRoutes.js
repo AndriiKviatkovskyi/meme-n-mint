@@ -109,4 +109,30 @@ router.post('/api/nfts', async (req, res) => {
 
   });
 
+
+  router.get('/api/nfts/owner/:owner', async (req, res) => {
+    const { owner } = req.params;
+  
+    if (!owner) {
+      return res.status(400).json({ error: 'Missing required path parameter: owner' });
+    }
+  
+    try {
+      const query = `
+        SELECT token_id, owner, metadata, likes
+        FROM nfts
+        WHERE owner = $1;
+      `;
+      const values = [owner];
+      const result = await pool.query(query, values);
+  
+      console.log('NFT data retrieved for owner:', owner);
+      res.status(200).json(result.rows); 
+  
+    } catch (error) {
+      console.error('Error retrieving NFT data:', error);
+      res.status(500).json({ error: 'Failed to retrieve NFT data.' });
+    }
+  });
+
 export default router;
