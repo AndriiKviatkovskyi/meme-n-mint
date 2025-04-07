@@ -76,6 +76,20 @@ function ProfilePage() {
                       }
                     }
 
+                    let likeCount = 0;
+
+                    try {
+                      const nft_id = nft.token_id;
+                      const response = await fetch(`http://localhost:5000/api/likes/nft/${nft_id}`);
+                      if (!response.ok) {
+                        throw new Error('Failed to fetch like count');
+                      }
+                      const likesData = await response.json();
+                      likeCount = likesData.like_count;
+                    } catch (err) {
+                      setError(err.message);
+                    }
+
                     return {
                       imageUrl: imageUri ? `http://localhost:8080/ipfs/${imageUri}` : null,
                       id: nft.token_id,
@@ -83,7 +97,7 @@ function ProfilePage() {
                       description: metadata.description,
                       creator: creatorString,
                       created_at: formattedDate,
-                      likes: nft.likes,
+                      likes: likeCount,
                     };
                   } else {
                     console.error('Failed to fetch metadata for NFT:', nft);

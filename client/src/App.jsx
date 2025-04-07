@@ -7,6 +7,7 @@ import ActivityPage from './pages/ActivityPage';
 import MintPage from './pages/MintPage';
 import ProfilePage from './pages/ProfilePage';
 import Navbar from './components/Navbar';
+import NFTDetailsPage from './pages/NFTDetailsPage';
 
 function App() {
   return (
@@ -38,7 +39,7 @@ function AppContent() {
         <Route path="/activity" element={<><Navbar /><ActivityPage /></>} />
         <Route path="/mint" element={<><Navbar /><MintPage /></>} />
         <Route path="/profile" element={<><Navbar /><ProfilePage /></>} />
-
+        <Route path="/nft/:nftId" element={<><Navbar /><NFTDetailsPage /></>} />
       </Routes>
     </div>
   );

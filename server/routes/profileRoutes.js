@@ -3,8 +3,6 @@ import { ethers } from 'ethers';
 import sharp from 'sharp';
 import pool from '../database/database.js';
 
-const IPFS_GATEWAY = 'http://127.0.0.1:5001';
-
 const router = express.Router();
 
 router.get('/api/usernames', async (req, res) => {

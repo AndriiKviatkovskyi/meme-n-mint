@@ -84,7 +84,7 @@ router.post('/api/mint', async (req, res) => {
 
 
 router.post('/api/nfts', async (req, res) => {
-  const { tokenId, owner, url, likes } = req.body;
+  const { tokenId, owner, url} = req.body;
   
   if (!tokenId || !owner || !url) {
     return res.status(400).json({ error: 'Missing required fields: tokenId, owner, and url.' });
@@ -92,14 +92,14 @@ router.post('/api/nfts', async (req, res) => {
   
   try {
     const query = `
-      INSERT INTO nfts (token_id, owner, metadata, likes)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO nfts (token_id, owner, metadata)
+      VALUES ($1, $2, $3)
       ON CONFLICT (token_id) DO NOTHING; 
       `;
-    const values = [tokenId, owner, url, likes];
+    const values = [tokenId, owner, url];
     const result = await pool.query(query, values);
   
-    console.log('NFT data inserted into database:', { tokenId, owner, url, likes });
+    console.log('NFT data inserted into database:', { tokenId, owner, url});
     res.status(201).json({ message: 'NFT data stored in database.', result: result.rowCount });
   
   } catch (error) {
@@ -108,6 +108,44 @@ router.post('/api/nfts', async (req, res) => {
   }
 
   });
+
+
+  router.get('/api/nfts/:id', async (req, res) => {
+    const nftId = req.params.id;
+    
+    try {
+      const query = 'SELECT * FROM nfts WHERE token_id = $1';
+      const values = [nftId];
+      const result = await pool.query(query, values);
+  
+      if (result.rows.length > 0) {
+        res.status(200).json(result.rows[0]);
+      } else {
+        res.status(404).json({ error: 'NFT not found' });
+      }
+    } catch (error) {
+      console.error('Error fetching NFT:', error);
+      res.status(500).json({ error: 'Failed to fetch NFT' });
+    }
+  });
+
+
+  router.get('/api/nfts', async (req, res) => {
+    try {
+      const query = 'SELECT * FROM nfts';
+      const result = await pool.query(query);
+  
+      if (result.rows.length > 0) {
+        res.status(200).json(result.rows);
+      } else {
+        res.status(404).json({ error: 'No NFTs found' });
+      }
+    } catch (error) {
+      console.error('Error fetching NFTs:', error);
+      res.status(500).json({ error: 'Failed to fetch NFTs' });
+    }
+  });
+  
 
 
   router.get('/api/nfts/owner/:owner', async (req, res) => {
@@ -119,7 +157,7 @@ router.post('/api/nfts', async (req, res) => {
   
     try {
       const query = `
-        SELECT token_id, owner, metadata, likes
+        SELECT token_id, owner, metadata
         FROM nfts
         WHERE owner = $1;
       `;

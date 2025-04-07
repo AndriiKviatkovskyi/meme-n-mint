@@ -215,7 +215,6 @@ function MintPage() {
             tokenId: id,
             owner: publicKey,
             url: metadataUri,
-            likes: 0,
           }),
         });
   

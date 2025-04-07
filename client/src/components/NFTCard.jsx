@@ -1,7 +1,13 @@
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 function NFTCard({ imageUrl, id, name, description, creator, created_at, likes }) {
   const creationDate = new Date(created_at);
+  const navigate = useNavigate();
+
+  const handleViewDetailsClick = () => {
+    navigate(`/nft/${id}`);
+  };
 
   return (
     <div style={cardStyle}>
@@ -20,6 +26,9 @@ function NFTCard({ imageUrl, id, name, description, creator, created_at, likes }
         <p style={creationTimeStyle}>Created At: {created_at}</p>
         <p style={likesStyle}>Likes: {likes || 0}</p>
       </div>
+      <button onClick={handleViewDetailsClick} style={viewDetailsButtonStyle}>
+        View Details
+      </button>
     </div>
   );
 }
@@ -31,6 +40,8 @@ const cardStyle = {
   width: '300px',
   backgroundColor: '#f9f9f9',
   overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
 };
 
 const imageFrameStyle = {
@@ -64,10 +75,11 @@ const contentStyle = {
 };
 
 const idStyle = {
-    margin: '0 0 10px 0',
-    fontSize: '1.2em',
-    fontWeight: 'bold',
-  };
+  margin: '0 0 5px 0', 
+  fontSize: '1em',
+  fontWeight: 'bold',
+  color: '#777',
+};
 
 const nameStyle = {
   margin: '0 0 10px 0',
@@ -97,6 +109,17 @@ const likesStyle = {
   margin: '0',
   fontSize: '0.9em',
   color: '#333',
+};
+
+const viewDetailsButtonStyle = {
+  backgroundColor: '#007bff',
+  color: 'white',
+  border: 'none',
+  padding: '10px 15px',
+  borderRadius: '5px',
+  cursor: 'pointer',
+  fontSize: '1em',
+  marginTop: '10px',
 };
 
 export default NFTCard;

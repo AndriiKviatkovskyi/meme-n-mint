@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import mintRoutes from './routes/nftRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import likesRoutes from './routes/likesRoutes.js';
 import pool from './database/database.js';
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(cors());
 
 app.use('/', mintRoutes);
 app.use('/', profileRoutes);
+app.use('/', likesRoutes);
 
 async function createNftTable() {
   try {
@@ -21,7 +23,6 @@ async function createNftTable() {
           token_id INTEGER PRIMARY KEY,
           owner VARCHAR(255) NOT NULL,
           metadata TEXT NOT NULL,
-          likes INTEGER DEFAULT 0,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE
       );
@@ -75,8 +76,27 @@ async function createUsernamesTable() {
   }
 }
 
+async function createLikesTable() {
+  try {
+    const likesTable = `
+      CREATE TABLE IF NOT EXISTS likes (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255),
+        nft_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, nft_id)
+      );
+    `;
+    await pool.query(likesTable);
+    console.log('Likes table created or already exists.');
+  } catch (error) {
+    console.error('Error creating usernames table:', error);
+  }
+}
+
 createNftTable();
 createUsernamesTable();
+createLikesTable();
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
