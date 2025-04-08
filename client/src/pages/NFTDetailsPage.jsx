@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useWallet } from '../context/WalletContext';
+import { ethers } from 'ethers';
 
 function NFTDetailsPage() {
   const { nftId } = useParams();
   const [nftDetails, setNftDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { walletAddress } = useWallet();
 
   useEffect(() => {
     const fetchNFTDetailsWithMetadata = async (id) => {

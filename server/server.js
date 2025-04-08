@@ -4,6 +4,7 @@ import cors from 'cors';
 import mintRoutes from './routes/nftRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import likesRoutes from './routes/likesRoutes.js';
+import listingsRoutes from './routes/listingsRoutes.js';
 import pool from './database/database.js';
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(cors());
 app.use('/', mintRoutes);
 app.use('/', profileRoutes);
 app.use('/', likesRoutes);
+app.use('/', listingsRoutes);
 
 async function createNftTable() {
   try {
@@ -94,9 +96,28 @@ async function createLikesTable() {
   }
 }
 
+async function createListingsTable() {
+  try {
+    const listingsTable = `
+      CREATE TABLE IF NOT EXISTS nft_listings (
+        listingId INTEGER PRIMARY KEY,
+        tokenId INTEGER NOT NULL,
+        price DECIMAL(18, 4) NOT NULL,
+        seller VARCHAR(255) NOT NULL,
+        isSold BOOLEAN DEFAULT FALSE
+      );
+    `;
+    await pool.query(listingsTable);
+    console.log('NFT Listings table created or already exists.');
+  } catch (error) {
+    console.error('Error creating NFT Listings table:', error);
+  }
+}
+
 createNftTable();
 createUsernamesTable();
 createLikesTable();
+createListingsTable();
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

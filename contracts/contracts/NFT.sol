@@ -18,7 +18,7 @@ contract NFT is ERC721URIStorage {
 
     event TokenMinted(uint256 indexed tokenId, string tokenURI, address marketplaceAddress, address minter);
 
-    constructor(address _marketplaceAddress) ERC721("NFT", "MEME") {
+    constructor(address _marketplaceAddress) ERC721("Meme-n-Mint", "MEMT") {
         marketplaceAddress = _marketplaceAddress;
     }
 

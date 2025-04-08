@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import MetamaskConnection from '../components/MetamaskConnection';
-import { useWallet } from '../context/WalletContext'; // <--- Make sure this import is present!
+import { useWallet } from '../context/WalletContext';
 
 function LoginPage() {
   const navigate = useNavigate();
