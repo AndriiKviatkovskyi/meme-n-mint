@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { ethers } from 'ethers';
+import axios from 'axios';
 
 function NFTDetailsPage() {
   const { nftId } = useParams();
   const [nftDetails, setNftDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { isConnected, walletAddress: account, provider, signer } = useWallet();
+  const { isConnected, walletAddress, walletAddress: account, provider, signer } = useWallet();
   const [ownerAddress, setOwnerAddress] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [listings, setListings] = useState([]);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [listPrice, setListPrice] = useState('');
-  const NFT_CONTRACT_ADDRESS = "0x05Ef3B28E9755dE0547aDd736bC2B311B300B811";
-  const MARKETPLACE_CONTRACT_ADDRESS = "0x034FdA0732D0BdB75d87AA0607152c29751bb979";
+  const NFT_CONTRACT_ADDRESS = "0x1A309d8E844C37d2FA6eA6eC5f95E0FFad2256B6";
+  const MARKETPLACE_CONTRACT_ADDRESS = "0xbCD6b5f7c64383EBBbdAFf997E44B4509CD5b350";
+  const POLYGONSCAN_API_KEY = "3QRUHZJW6ABT5XFTT8CKDU59FM7KUREDN3";
   
 
   useEffect(() => {
@@ -148,24 +150,80 @@ function NFTDetailsPage() {
 
   const handleCancelSale = async () => {
     console.log('Cancel sale clicked');
-    console.log(listings);
+    
     if (listings.length > 0 && listings[0].listingid) {
       const listingIdToDelete = listings[0].listingid;
+      const tokenIdToDelete = listings[0].tokenid;
+      const seller = walletAddress;
+      const messageToSign = JSON.stringify({
+        listingId: listingIdToDelete,
+        seller,
+        timestamp: Date.now(),
+      });
+  
+      const signature = await getSignature(messageToSign);
+  
+      if (!signature) {
+        console.error('User signature failed or was rejected.');
+        return;
+      }
+  
       try {
-        const response = await fetch(`http://localhost:5000/api/listings/${listingIdToDelete}`, {
+        const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: messageToSign, signature, address: seller }),
+        });
+  
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResponse.ok || !verifyResult.verified) {
+          console.error('Signature verification failed on backend:', verifyResult.error);
+          return;
+        }
+  
+        console.log('Signature verified successfully.');
+  
+        const contract = await getContract();
+
+        try {
+          const listingData = await contract.getListing(tokenIdToDelete);
+          console.log('Listing data from Marketplace.sol:', {
+            nftContractAddress: listingData[0],
+            tokenIdValue: listingData[1].toString(),
+            price: listingData[2].toString(),
+            seller: listingData[3],
+            isSold: listingData[4],
+          });
+        } catch (error) {
+          console.error('Error fetching listing data from contract:', error);
+
+        }
+
+
+        const tx = await contract.cancelListing(NFT_CONTRACT_ADDRESS, tokenIdToDelete);
+        const receipt = await tx.wait();
+        console.log('Sale cancelled on-chain. Tx hash:', tx.hash);
+        const event = receipt.logs.find(log => log.fragment.name === "ItemCancelled");
+        if (!event) {
+          console.error("❌ No ItemCancelled event found.");
+          return;
+        }
+  
+        const dbResponse = await fetch(`http://localhost:5000/api/listings/${listingIdToDelete}`, {
           method: 'DELETE',
         });
   
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Listing deleted successfully:', data.message);
-          fetchListings();
+        if (dbResponse.ok) {
+          const data = await dbResponse.json();
+          console.log('Listing deleted from DB successfully:', data.message);
+          fetchListings(); 
         } else {
-          const errorData = await response.json();
-          console.error('Failed to delete listing:', errorData.error);
+          const errorData = await dbResponse.json();
+          console.error('Failed to delete listing from DB:', errorData.error);
         }
       } catch (error) {
-        console.error('Error deleting listing:', error);
+        console.error('Error during cancel sale process:', error);
+      } finally {
       }
     } else {
       console.error('No listing ID available to cancel.');
@@ -183,9 +241,10 @@ function NFTDetailsPage() {
   };
 
   const getSignature = async (message) => {
+    console.log(provider);
+    console.log(account);
     if (!provider || !account) {
-      setMintingStatus('failed');
-      setMintingMessage('Please connect your wallet first.');
+      console.log("No provider or account");
       return null;
     }
 
@@ -219,10 +278,10 @@ function NFTDetailsPage() {
 
   const handleListNFT = async () => {
     console.log('List NFT for sale with price:', listPrice);
-    const listingId = Math.floor(Math.random() * 1000) + 1;
+  
     const tokenId = nftDetails?.id;
     const seller = walletAddress;
-    const price = parseFloat(listPrice); 
+    const price = parseFloat(listPrice);
     const isSold = false;
   
     if (!tokenId || !seller || isNaN(price) || price <= 0) {
@@ -230,12 +289,50 @@ function NFTDetailsPage() {
       return;
     }
   
+    const messageToSign = JSON.stringify({
+      tokenId,
+      price,
+      seller,
+      timestamp: Date.now(),
+    });
+
+    const signature = await getSignature(messageToSign);
+  
+    if (!signature) {
+      console.error('User signature failed or was rejected.');
+      return;
+    }
+  
     try {
-      const response = await fetch('http://localhost:5000/api/listings', {
+      const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: messageToSign, signature, address: seller }),
+      });
+  
+      const verifyResult = await verifyResponse.json();
+      if (!verifyResponse.ok || !verifyResult.verified) {
+        console.error('Signature verification failed on backend:', verifyResult.error);
+        return;
+      }
+  
+      console.log('Signature verified successfully.');
+  
+      const contract = await getContract();
+      const tx = await contract.listItem(NFT_CONTRACT_ADDRESS, tokenId, ethers.parseEther(price.toString()));
+      const receipt = await tx.wait();
+      console.log('NFT listed on-chain. Tx hash:', tx.hash);
+      const event = receipt.logs.find(log => log.fragment.name === "ItemListed");
+      if (!event) {
+          console.error("❌ No ItemListed event found.");
+          return;
+      }
+  
+      const listingId = event.args[0].toString();
+
+      const dbResponse = await fetch('http://localhost:5000/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           listingId,
           tokenId,
@@ -245,16 +342,16 @@ function NFTDetailsPage() {
         }),
       });
   
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Listing added successfully:', data.message);
+      if (dbResponse.ok) {
+        const data = await dbResponse.json();
+        console.log('Listing added to DB successfully:', data.message);
         fetchListings();
       } else {
-        const errorData = await response.json();
-        console.error('Failed to create listing:', errorData.error);
+        const errorData = await dbResponse.json();
+        console.error('Failed to create DB listing:', errorData.error);
       }
     } catch (error) {
-      console.error('Error sending listing request:', error);
+      console.error('Error during listing process:', error);
     } finally {
       handleCloseListModal();
     }
