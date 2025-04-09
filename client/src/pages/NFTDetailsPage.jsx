@@ -187,18 +187,27 @@ function NFTDetailsPage() {
 
         const price = ethers.parseEther(listings[0].price.toString());
 
+
+        const nftContract = await getNFTContract();
+
+        
+        const isApproved = await nftContract.isApprovedForAll(walletAddress, MARKETPLACE_CONTRACT_ADDRESS);
+
+        if (!isApproved) {
+          console.log("Marketplace is not yet approved. Proceeding with approval...");
+          const approveTx = await nftContract.setApprovalForAll(MARKETPLACE_CONTRACT_ADDRESS, true);
+          await approveTx.wait();
+          console.log("Marketplace has been approved.");
+        } else {
+          console.log("Marketplace is already approved.");
+        }
+
         const contract = await getContract();
         const tx = await contract.buyItem(NFT_CONTRACT_ADDRESS, listings[0].tokenid, {
           value: price,
         });
         const receipt = await tx.wait();
         console.log('NFT purchase successful. Tx hash:', tx.hash);
-        console.log(receipt.logs);
-        // const event = receipt.logs.find(log => log.fragment.name === "ItemBought");
-        // if (!event) {
-        //     console.error("❌ No ItemBought event found.");
-        //     return;
-        // }
 
         const purchaseId = listings[0].listingId;
 
@@ -230,6 +239,7 @@ function NFTDetailsPage() {
         if (nftResponse.ok) {
             const nftData = await nftResponse.json();
             console.log('NFT ownership updated successfully:', nftData.message);
+            setIsOwner(true);
             fetchListings();
         } else {
             const nftErrorData = await nftResponse.json();
@@ -365,13 +375,22 @@ function NFTDetailsPage() {
         return JSON.parse(response.data.result);
   }
 
+  const getNFTABI = async () => {
+    const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
+        const response = await axios.get(url);
+        if (response.data.status !== "1") {
+            throw new Error("Failed to fetch ABI from Polygonscan");
+        }
+        return JSON.parse(response.data.result);
+  }
+
   async function getContract() {
       const abi = await getABI(MARKETPLACE_CONTRACT_ADDRESS);
       return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, abi, signer);
   }
 
   async function getNFTContract() {
-    const abi = await getABI(NFT_CONTRACT_ADDRESS);
+    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
     return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, signer);
   }
 
@@ -421,12 +440,17 @@ function NFTDetailsPage() {
 
       const nftContract = await getNFTContract();
 
-      console.log(nftContract);
+      
+      const isApproved = await nftContract.isApprovedForAll(walletAddress, MARKETPLACE_CONTRACT_ADDRESS);
 
-      console.log('Requesting approval for the marketplace...');
-      const approveTx = await nftContract.setApprovalForAll(MARKETPLACE_CONTRACT_ADDRESS, true);
-      await approveTx.wait();
-      console.log('Marketplace approved successfully.');
+      if (!isApproved) {
+        console.log("Marketplace is not yet approved. Proceeding with approval...");
+        const approveTx = await nftContract.setApprovalForAll(MARKETPLACE_CONTRACT_ADDRESS, true);
+        await approveTx.wait();
+        console.log("Marketplace has been approved.");
+      } else {
+        console.log("Marketplace is already approved.");
+      }
 
 
       const tx = await contract.listItem(NFT_CONTRACT_ADDRESS, tokenId, ethers.parseEther(price.toString()));
