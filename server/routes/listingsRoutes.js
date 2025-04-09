@@ -20,6 +20,34 @@ router.post("/api/listings", async (req, res) => {
       res.status(500).json({ error: "Failed to create listing" });
     }
   });
+
+
+  router.put("/api/listings/:listingId", async (req, res) => {
+    const { listingId } = req.params;
+    const { isSold } = req.body; 
+
+    if (typeof isSold !== 'boolean') {
+        return res.status(400).json({ error: "'isSold' must be a boolean value" });
+    }
+
+    try {
+        const query = `
+            UPDATE nft_listings 
+            SET isSold = $1 
+            WHERE listingId = $2;
+        `;
+        const result = await pool.query(query, [isSold, listingId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Listing not found" });
+        }
+
+        res.status(200).json({ message: "Listing updated successfully" });
+    } catch (error) {
+        console.error("Error updating listing:", error);
+        res.status(500).json({ error: "Failed to update listing" });
+    }
+  });
   
  
   router.get("/api/listings", async (req, res) => {

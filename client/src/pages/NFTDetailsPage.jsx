@@ -144,8 +144,101 @@ function NFTDetailsPage() {
     }
   }, [nftDetails, ownerAddress, walletAddress]);
 
-  const handleBuyNow = () => {
-    console.log('Buy now clicked');
+
+
+  const handleBuyNow = async () => {
+    console.log('Buy now clicked for listing ID:', listings[0].listingid, 'at price:', listings[0].price);
+
+    const buyer = walletAddress;
+
+    if (!listings[0].listingid || !buyer || isNaN(listings[0].price) || listings[0].price <= 0) {
+        console.error('Missing required information to buy NFT.');
+        return;
+    }
+
+    const messageToSign = JSON.stringify({
+        listingId: listings[0].listingid,
+        price: listings[0].price,
+        buyer,
+        timestamp: Date.now(),
+    });
+
+    const signature = await getSignature(messageToSign);
+
+    if (!signature) {
+        console.error('User signature failed or was rejected.');
+        return;
+    }
+
+    try {
+        const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: messageToSign, signature, address: buyer }),
+        });
+
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResponse.ok || !verifyResult.verified) {
+            console.error('Signature verification failed on backend:', verifyResult.error);
+            return;
+        }
+
+        console.log('Signature verified successfully.');
+
+        const price = ethers.parseEther(listings[0].price.toString());
+
+        const contract = await getContract();
+        const tx = await contract.buyItem(NFT_CONTRACT_ADDRESS, listings[0].tokenid, {
+          value: price,
+        });
+        const receipt = await tx.wait();
+        console.log('NFT purchase successful. Tx hash:', tx.hash);
+        console.log(receipt.logs);
+        // const event = receipt.logs.find(log => log.fragment.name === "ItemBought");
+        // if (!event) {
+        //     console.error("❌ No ItemBought event found.");
+        //     return;
+        // }
+
+        const purchaseId = listings[0].listingId;
+
+        const response = await fetch(`http://localhost:5000/api/listings/${listings[0].listingid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                isSold: true,
+            }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Listing updated to sold successfully:', data.message);
+            fetchListings();
+        } else {
+            const errorData = await response.json();
+            console.error('Failed to update DB listing:', errorData.error);
+        }
+
+        const nftResponse = await fetch(`http://localhost:5000/api/nfts/${listings[0].tokenid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner: buyer,
+            }),
+        });
+
+        if (nftResponse.ok) {
+            const nftData = await nftResponse.json();
+            console.log('NFT ownership updated successfully:', nftData.message);
+            fetchListings();
+        } else {
+            const nftErrorData = await nftResponse.json();
+            console.error('Failed to update NFT owner:', nftErrorData.error);
+        }
+
+    } catch (error) {
+        console.error('Error during purchase process:', error);
+    }
   };
 
   const handleCancelSale = async () => {
@@ -203,6 +296,7 @@ function NFTDetailsPage() {
         const tx = await contract.cancelListing(NFT_CONTRACT_ADDRESS, tokenIdToDelete);
         const receipt = await tx.wait();
         console.log('Sale cancelled on-chain. Tx hash:', tx.hash);
+        console.log(receipt.logs);
         const event = receipt.logs.find(log => log.fragment.name === "ItemCancelled");
         if (!event) {
           console.error("❌ No ItemCancelled event found.");
@@ -276,6 +370,11 @@ function NFTDetailsPage() {
       return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, abi, signer);
   }
 
+  async function getNFTContract() {
+    const abi = await getABI(NFT_CONTRACT_ADDRESS);
+    return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, signer);
+  }
+
   const handleListNFT = async () => {
     console.log('List NFT for sale with price:', listPrice);
   
@@ -319,9 +418,21 @@ function NFTDetailsPage() {
       console.log('Signature verified successfully.');
   
       const contract = await getContract();
+
+      const nftContract = await getNFTContract();
+
+      console.log(nftContract);
+
+      console.log('Requesting approval for the marketplace...');
+      const approveTx = await nftContract.setApprovalForAll(MARKETPLACE_CONTRACT_ADDRESS, true);
+      await approveTx.wait();
+      console.log('Marketplace approved successfully.');
+
+
       const tx = await contract.listItem(NFT_CONTRACT_ADDRESS, tokenId, ethers.parseEther(price.toString()));
       const receipt = await tx.wait();
       console.log('NFT listed on-chain. Tx hash:', tx.hash);
+      console.log(receipt.logs);
       const event = receipt.logs.find(log => log.fragment.name === "ItemListed");
       if (!event) {
           console.error("❌ No ItemListed event found.");

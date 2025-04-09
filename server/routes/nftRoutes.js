@@ -109,6 +109,36 @@ router.post('/api/nfts', async (req, res) => {
 
   });
 
+  router.put('/api/nfts/:tokenId', async (req, res) => {
+    const { tokenId } = req.params; 
+    const { owner } = req.body; 
+  
+    if (!owner) {
+      return res.status(400).json({ error: 'Missing required field: owner.' });
+    }
+  
+    try {
+      const query = `
+        UPDATE nfts 
+        SET owner = $1
+        WHERE token_id = $2;
+      `;
+      const values = [owner, tokenId];
+      const result = await pool.query(query, values);
+  
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "NFT with the given tokenId not found." });
+      }
+  
+      console.log('NFT owner updated in the database:', { tokenId, owner });
+      res.status(200).json({ message: 'NFT owner updated successfully', result: result.rowCount });
+    } catch (error) {
+      console.error('Error updating data in database:', error);
+      res.status(500).json({ error: 'Failed to update NFT data in database.' });
+    }
+  });
+  
+
 
   router.get('/api/nfts/:id', async (req, res) => {
     const nftId = req.params.id;
