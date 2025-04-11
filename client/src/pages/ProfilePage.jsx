@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '../context/WalletContext';
 import MetamaskConnection from '../components/MetamaskConnection';
 import NFTCard from '../components/NFTCard';
+import axios from 'axios';
+import { ethers } from 'ethers';
+import {NFT_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
+
 
 function ProfilePage() {
-  const { isConnected, walletAddress } = useWallet();
+  const { isConnected, walletAddress, walletAddress: signer, provider } = useWallet();
   const [username, setUsername] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -34,11 +38,28 @@ function ProfilePage() {
 
   useEffect(() => {
     const fetchUserNFTsWithMetadata = async () => {
+      const nftData = [];
       if (walletAddress) {
         try {
-          const response = await fetch(`http://localhost:5000/api/nfts/owner/${walletAddress}`);
-          if (response.ok) {
-            const nftData = await response.json();
+          const nftContract = await getNFTContract();
+          const total = await nftContract.totalSupply();
+          console.log(total);
+          for (let i = 1; i <= Number(total); i++) {
+            console.log(i);
+            const tokenId = i;
+            const [metadata, owner] = await Promise.all([
+              nftContract.tokenURI(tokenId),
+              nftContract.ownerOf(tokenId)
+            ]);
+            if (owner.toLowerCase() === walletAddress.toLowerCase()) {
+              nftData.push({
+                token_id: tokenId,
+                owner,
+                metadata
+              });
+            }
+          }
+          if (total > -1) {
             const transformedNFTs = await Promise.all(
               nftData.map(async (nft) => {
                 try {
@@ -108,7 +129,7 @@ function ProfilePage() {
                       description: 'Error loading description',
                       creator: 'Error',
                       created_at: nft.created_at,
-                      likes: nft.likes,
+                      likes: 0,
                     };
                   }
                 } catch (error) {
@@ -120,7 +141,7 @@ function ProfilePage() {
                     description: 'Error loading description',
                     creator: 'Error',
                     created_at: nft.created_at,
-                    likes: nft.likes,
+                    likes: 0,
                   };
                 }
               })
@@ -140,6 +161,20 @@ function ProfilePage() {
 
     fetchUserNFTsWithMetadata();
   }, [walletAddress]);
+
+  const getNFTABI = async () => {
+    const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
+        const response = await axios.get(url);
+        if (response.data.status !== "1") {
+            throw new Error("Failed to fetch ABI from Polygonscan");
+        }
+        return JSON.parse(response.data.result);
+  }
+
+  async function getNFTContract() {
+    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
+    return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+  }
 
   const handleInputChange = (event) => {
     setNewUsername(event.target.value);

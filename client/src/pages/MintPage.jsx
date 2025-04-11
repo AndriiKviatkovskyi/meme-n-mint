@@ -3,6 +3,7 @@ import MetamaskConnection from '../components/MetamaskConnection';
 import { useWallet } from '../context/WalletContext';
 import axios from 'axios';
 import { ethers } from 'ethers';
+import {NFT_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
 
 function MintPage() {
   const { isConnected, walletAddress: account, provider, signer } = useWallet();
@@ -11,10 +12,6 @@ function MintPage() {
   const [nftDescription, setNftDescription] = useState('');
   const [mintingStatus, setMintingStatus] = useState(null);
   const [mintingMessage, setMintingMessage] = useState('');
-
-  const NFT_CONTRACT_ADDRESS = "0x1A309d8E844C37d2FA6eA6eC5f95E0FFad2256B6";
-  const POLYGONSCAN_API_KEY = "3QRUHZJW6ABT5XFTT8CKDU59FM7KUREDN3";
-  const PROVIDER_URL = "https://rpc-amoy.polygon.technology";
 
   useEffect(() => {
     if (mintingStatus) {

@@ -1,17 +1,43 @@
 import React, { useState, useEffect } from 'react';
+import { useWallet } from '../context/WalletContext';
 import NFTBrowseCard from '../components/NFTBrowseCard';
+import axios from 'axios';
+import { ethers } from 'ethers';
+import {NFT_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
 
 function BrowsePage() {
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isConnected, walletAddress, walletAddress: account, provider, signer } = useWallet();
+
+  
 
   useEffect(() => {
+
     const fetchNFTsWithMetadata = async () => {
+      const nftData = [];
+      if (!provider) {
+        return;
+      }
       try {
-        const response = await fetch('http://localhost:5000/api/nfts');
-        if (response.ok) {
-          const nftData = await response.json();
+        const nftContract = await getNFTContract();
+        console.log(nftContract);
+        console.log(isConnected);
+        const total = await nftContract.totalSupply();
+        for (let i = 1; i <= Number(total); i++) {
+          const tokenId = i;
+          const [metadata, owner] = await Promise.all([
+            nftContract.tokenURI(tokenId),
+            nftContract.ownerOf(tokenId)
+          ]);
+          nftData.push({
+            token_id: tokenId,
+            owner,
+            metadata
+          });
+        }
+        if (total > -1) {
           const transformedNFTs = await Promise.all(
             nftData.map(async (nft) => {
               try {
@@ -110,7 +136,21 @@ function BrowsePage() {
     };
 
     fetchNFTsWithMetadata();
-  }, []);
+  }, [walletAddress]);
+
+  const getNFTABI = async () => {
+    const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
+        const response = await axios.get(url);
+        if (response.data.status !== "1") {
+            throw new Error("Failed to fetch ABI from Polygonscan");
+        }
+        return JSON.parse(response.data.result);
+  }
+
+  async function getNFTContract() {
+    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
+    return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+  }
 
   if (loading) {
     return <div>Loading NFTs...</div>;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 
 const WalletContext = createContext();
@@ -9,7 +9,7 @@ export const WalletProvider = ({ children }) => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
 
-  const setWalletData = async (address, connectedProvider) => { 
+  const setWalletData = useCallback(async (address, connectedProvider) => {
     setWalletAddress(address);
     setIsConnected(true);
     setProvider(connectedProvider);
@@ -20,23 +20,24 @@ export const WalletProvider = ({ children }) => {
       console.error('Error getting signer:', error);
       setSigner(null);
     }
-  };
-
-  const clearWalletData = () => {
+  }, []);
+  
+  const clearWalletData = useCallback(() => {
     setWalletAddress(null);
     setIsConnected(false);
     setProvider(null);
     setSigner(null);
-  };
+  }, []);
 
   useEffect(() => {
     const checkConnection = async () => {
       if (window.ethereum) {
         try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          console.log(window.ethereum);
+          const provider = new ethers.BrowserProvider(window.ethereum);
           const accounts = await provider.listAccounts();
           if (accounts.length > 0) {
-            setWalletData(accounts[0], provider);
+            setWalletData(accounts[0].address, provider);
           }
         } catch (error) {
           console.error('Error checking connection:', error);
@@ -45,6 +46,7 @@ export const WalletProvider = ({ children }) => {
     };
 
     checkConnection();
+
 
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', async (accounts) => {
@@ -68,6 +70,8 @@ export const WalletProvider = ({ children }) => {
       }
     };
   }, [setWalletData, clearWalletData]);
+
+
 
   const contextValue = {
     walletAddress,

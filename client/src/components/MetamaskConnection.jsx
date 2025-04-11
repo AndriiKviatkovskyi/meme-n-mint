@@ -54,12 +54,6 @@ function MetamaskConnection() {
   }, [clearWalletData]);
 
 
-  // useEffect(() => {
-  //   if (web3Modal.cachedProvider) {
-  //     connectWallet();
-  //   }
-  // }, [connectWallet]);
-
 
   return (
     <div>

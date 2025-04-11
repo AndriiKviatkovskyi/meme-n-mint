@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { ethers } from 'ethers';
 import axios from 'axios';
+import {NFT_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
 
 function NFTDetailsPage() {
   const { nftId } = useParams();
@@ -15,22 +16,23 @@ function NFTDetailsPage() {
   const [listings, setListings] = useState([]);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [listPrice, setListPrice] = useState('');
-  const NFT_CONTRACT_ADDRESS = "0x1A309d8E844C37d2FA6eA6eC5f95E0FFad2256B6";
-  const MARKETPLACE_CONTRACT_ADDRESS = "0xbCD6b5f7c64383EBBbdAFf997E44B4509CD5b350";
-  const POLYGONSCAN_API_KEY = "3QRUHZJW6ABT5XFTT8CKDU59FM7KUREDN3";
-  
+
 
   useEffect(() => {
     const fetchNFTDetailsWithMetadata = async (id) => {
+      if (!provider) {
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`http://localhost:5000/api/nfts/${id}`);
-        if (response.ok) {
-          const nft = await response.json();
-          setOwnerAddress(nft.owner);
+        const nftContract = await getNFTContractForView();
+        const tokenUri = await nftContract.tokenURI(id);
+        const owner = await nftContract.ownerOf(id);
+        if (2 > 1) {
+          setOwnerAddress(owner);
           try {
-            const uri = nft.metadata.replace("ipfs://", "");
+            const uri = tokenUri.replace("ipfs://", "");
             const metadataResponse = await fetch(`http://localhost:8080/ipfs/${uri}`);
             if (metadataResponse.ok) {
               const metadata = await metadataResponse.json();
@@ -46,7 +48,7 @@ function NFTDetailsPage() {
               const seconds = dateObject.getSeconds();
               const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
-              let ownerString = nft.owner;
+              let ownerString = owner;
               if (ownerString) {
                 try {
                   const response = await fetch(`http://localhost:5000/api/usernames?walletAddress=${ownerString}`);
@@ -79,8 +81,7 @@ function NFTDetailsPage() {
               let likeCount = 0;
 
               try {
-                const nft_id = nft.token_id;
-                const response = await fetch(`http://localhost:5000/api/likes/nft/${nft_id}`);
+                const response = await fetch(`http://localhost:5000/api/likes/nft/${id}`);
                 if (!response.ok) {
                   throw new Error('Failed to fetch like count');
                 }
@@ -92,7 +93,7 @@ function NFTDetailsPage() {
 
               setNftDetails({
                 imageUrl: imageUri ? `http://localhost:8080/ipfs/${imageUri}` : null,
-                id: nft.token_id,
+                id: id,
                 name: metadata.name,
                 description: metadata.description,
                 owner: ownerString,
@@ -101,11 +102,11 @@ function NFTDetailsPage() {
                 likes: likeCount,
               });
             } else {
-              console.error('Failed to fetch metadata for NFT:', nft);
+              console.error('Failed to fetch metadata for NFT');
               setError('Failed to load NFT metadata.');
             }
           } catch (error) {
-            console.error('Error fetching metadata for NFT:', nft, error);
+            console.error('Error fetching metadata for NFT:', error);
             setError('Error loading NFT metadata.');
           }
         } else if (response.status === 404) {
@@ -115,25 +116,41 @@ function NFTDetailsPage() {
         }
       } catch (error) {
         setError('Error fetching NFT details:', error);
+        console.log(error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchNFTDetailsWithMetadata(nftId);
-  }, [nftId]);
+  }, [walletAddress, nftId]);
 
   const fetchListings = async () => {
+    if (!provider) {
+      return;
+    }
     try {
-      const response = await fetch(`http://localhost:5000/api/listings/unsold/${nftDetails.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setListings(data);
+      const marketplaceContract = await getMarketplaceContractForView();
+      console.log(nftDetails.id);
+      const rawListingId = await marketplaceContract.getListingId(nftDetails.id);
+      if(Number(rawListingId) === 0){
+        return;
       } else {
-        console.error('Failed to fetch listings');
+      const [nftContractAddress, tokenIdValue, price, seller, isSold] = await marketplaceContract.getListing(nftDetails.id);
+      let data = {};
+      let value = parseFloat(ethers.formatUnits(price, 18));
+      if(isSold === false){
+        data = {
+          tokenid: Number(tokenIdValue),
+          price: value,
+          seller: seller,
+        };
+      }
+      console.log(data);
+      setListings([data]);
       }
     } catch (error) {
-      console.error('Error fetching listings:', error);
+      console.log(error);
     }
   };
 
@@ -147,17 +164,15 @@ function NFTDetailsPage() {
 
 
   const handleBuyNow = async () => {
-    console.log('Buy now clicked for listing ID:', listings[0].listingid, 'at price:', listings[0].price);
 
     const buyer = walletAddress;
 
-    if (!listings[0].listingid || !buyer || isNaN(listings[0].price) || listings[0].price <= 0) {
+    if (!listings[0] || !buyer || isNaN(listings[0].price) || listings[0].price <= 0) {
         console.error('Missing required information to buy NFT.');
         return;
     }
 
     const messageToSign = JSON.stringify({
-        listingId: listings[0].listingid,
         price: listings[0].price,
         buyer,
         timestamp: Date.now(),
@@ -202,49 +217,49 @@ function NFTDetailsPage() {
           console.log("Marketplace is already approved.");
         }
 
-        const contract = await getContract();
+        const contract = await getMarketplaceContract();
         const tx = await contract.buyItem(NFT_CONTRACT_ADDRESS, listings[0].tokenid, {
           value: price,
         });
         const receipt = await tx.wait();
         console.log('NFT purchase successful. Tx hash:', tx.hash);
 
-        const purchaseId = listings[0].listingId;
+        fetchListings();
 
-        const response = await fetch(`http://localhost:5000/api/listings/${listings[0].listingid}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                isSold: true,
-            }),
-        });
+        // const response = await fetch(`http://localhost:5000/api/listings/${listings[0].listingid}`, {
+        //     method: 'PUT',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({
+        //         isSold: true,
+        //     }),
+        // });
 
-        if (response.ok) {
-            const data = await response.json();
-            console.log('Listing updated to sold successfully:', data.message);
-            fetchListings();
-        } else {
-            const errorData = await response.json();
-            console.error('Failed to update DB listing:', errorData.error);
-        }
+        // if (response.ok) {
+        //     const data = await response.json();
+        //     console.log('Listing updated to sold successfully:', data.message);
+        //     fetchListings();
+        // } else {
+        //     const errorData = await response.json();
+        //     console.error('Failed to update DB listing:', errorData.error);
+        // }
 
-        const nftResponse = await fetch(`http://localhost:5000/api/nfts/${listings[0].tokenid}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                owner: buyer,
-            }),
-        });
+        // const nftResponse = await fetch(`http://localhost:5000/api/nfts/${listings[0].tokenid}`, {
+        //     method: 'PUT',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({
+        //         owner: buyer,
+        //     }),
+        // });
 
-        if (nftResponse.ok) {
-            const nftData = await nftResponse.json();
-            console.log('NFT ownership updated successfully:', nftData.message);
-            setIsOwner(true);
-            fetchListings();
-        } else {
-            const nftErrorData = await nftResponse.json();
-            console.error('Failed to update NFT owner:', nftErrorData.error);
-        }
+        // if (nftResponse.ok) {
+        //     const nftData = await nftResponse.json();
+        //     console.log('NFT ownership updated successfully:', nftData.message);
+        //     setIsOwner(true);
+        //     fetchListings();
+        // } else {
+        //     const nftErrorData = await nftResponse.json();
+        //     console.error('Failed to update NFT owner:', nftErrorData.error);
+        // }
 
     } catch (error) {
         console.error('Error during purchase process:', error);
@@ -254,12 +269,12 @@ function NFTDetailsPage() {
   const handleCancelSale = async () => {
     console.log('Cancel sale clicked');
     
-    if (listings.length > 0 && listings[0].listingid) {
-      const listingIdToDelete = listings[0].listingid;
+    if (listings.length > 0 && listings[0]) {
+      //const listingIdToDelete = listings[0].listingid;
       const tokenIdToDelete = listings[0].tokenid;
       const seller = walletAddress;
       const messageToSign = JSON.stringify({
-        listingId: listingIdToDelete,
+        tokenId: listings[0].tokenid,
         seller,
         timestamp: Date.now(),
       });
@@ -286,17 +301,17 @@ function NFTDetailsPage() {
   
         console.log('Signature verified successfully.');
   
-        const contract = await getContract();
+        const contract = await getMarketplaceContract();
 
         try {
           const listingData = await contract.getListing(tokenIdToDelete);
-          console.log('Listing data from Marketplace.sol:', {
-            nftContractAddress: listingData[0],
-            tokenIdValue: listingData[1].toString(),
-            price: listingData[2].toString(),
-            seller: listingData[3],
-            isSold: listingData[4],
-          });
+          // console.log('Listing data from Marketplace.sol:', {
+          //   nftContractAddress: listingData[0],
+          //   tokenIdValue: listingData[1].toString(),
+          //   price: listingData[2].toString(),
+          //   seller: listingData[3],
+          //   isSold: listingData[4],
+          // });
         } catch (error) {
           console.error('Error fetching listing data from contract:', error);
 
@@ -313,18 +328,20 @@ function NFTDetailsPage() {
           return;
         }
   
-        const dbResponse = await fetch(`http://localhost:5000/api/listings/${listingIdToDelete}`, {
-          method: 'DELETE',
-        });
+        // const dbResponse = await fetch(`http://localhost:5000/api/listings/${listingIdToDelete}`, {
+        //   method: 'DELETE',
+        // });
   
-        if (dbResponse.ok) {
-          const data = await dbResponse.json();
-          console.log('Listing deleted from DB successfully:', data.message);
-          fetchListings(); 
-        } else {
-          const errorData = await dbResponse.json();
-          console.error('Failed to delete listing from DB:', errorData.error);
-        }
+        // if (dbResponse.ok) {
+        //   const data = await dbResponse.json();
+        //   console.log('Listing deleted from DB successfully:', data.message);
+        //   fetchListings(); 
+        // } else {
+        //   const errorData = await dbResponse.json();
+        //   console.error('Failed to delete listing from DB:', errorData.error);
+        // }
+        setListings([]);
+        fetchListings();
       } catch (error) {
         console.error('Error during cancel sale process:', error);
       } finally {
@@ -366,7 +383,7 @@ function NFTDetailsPage() {
     }
   };
 
-  const getABI = async () => {
+  const getMarketplaceABI = async () => {
     const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${MARKETPLACE_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
         const response = await axios.get(url);
         if (response.data.status !== "1") {
@@ -384,14 +401,25 @@ function NFTDetailsPage() {
         return JSON.parse(response.data.result);
   }
 
-  async function getContract() {
-      const abi = await getABI(MARKETPLACE_CONTRACT_ADDRESS);
+  async function getMarketplaceContract() {
+      const abi = await getMarketplaceABI(MARKETPLACE_CONTRACT_ADDRESS);
       return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, abi, signer);
   }
+
+  async function getMarketplaceContractForView() {
+    const abi = await getMarketplaceABI(MARKETPLACE_CONTRACT_ADDRESS);
+    return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, abi, provider);
+  }
+
 
   async function getNFTContract() {
     const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
     return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, signer);
+  }
+
+  async function getNFTContractForView() {
+    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
+    return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
   }
 
   const handleListNFT = async () => {
@@ -436,7 +464,7 @@ function NFTDetailsPage() {
   
       console.log('Signature verified successfully.');
   
-      const contract = await getContract();
+      const contract = await getMarketplaceContract();
 
       const nftContract = await getNFTContract();
 
@@ -463,28 +491,29 @@ function NFTDetailsPage() {
           return;
       }
   
-      const listingId = event.args[0].toString();
+      // const listingId = event.args[0].toString();
 
-      const dbResponse = await fetch('http://localhost:5000/api/listings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingId,
-          tokenId,
-          price,
-          seller,
-          isSold,
-        }),
-      });
+      // const dbResponse = await fetch('http://localhost:5000/api/listings', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     listingId,
+      //     tokenId,
+      //     price,
+      //     seller,
+      //     isSold,
+      //   }),
+      // });
   
-      if (dbResponse.ok) {
-        const data = await dbResponse.json();
-        console.log('Listing added to DB successfully:', data.message);
-        fetchListings();
-      } else {
-        const errorData = await dbResponse.json();
-        console.error('Failed to create DB listing:', errorData.error);
-      }
+      // if (dbResponse.ok) {
+      //   const data = await dbResponse.json();
+      //   console.log('Listing added to DB successfully:', data.message);
+      //   fetchListings();
+      // } else {
+      //   const errorData = await dbResponse.json();
+      //   console.error('Failed to create DB listing:', errorData.error);
+      // }
+      fetchListings();
     } catch (error) {
       console.error('Error during listing process:', error);
     } finally {
@@ -624,7 +653,7 @@ function NFTDetailsPage() {
         {listings.length === 0 && !isOwner && (
           <p>NFT not listed for sale</p>
         )}
-
+        
         {listings.length === 0 && isOwner && (
           <button
             onClick={handleListForSaleClick}
@@ -647,7 +676,7 @@ function NFTDetailsPage() {
           </button>
         )}
 
-        {listings.length > 0 && isOwner && listings[0] && (
+        {listings.length > 0 && isOwner && (
           <button
             onClick={handleCancelSale}
             style={{ ...cancelButtonStyle, '&:hover': cancelButtonHoverStyle, backgroundColor: '#F08080' }}
