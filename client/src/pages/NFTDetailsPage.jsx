@@ -540,7 +540,7 @@ function NFTDetailsPage() {
 
   const listButtonStyle = {
     ...buttonStyle,
-    backgroundColor: '#ADD8E6', // Light blue
+    backgroundColor: '#ADD8E6',
   };
 
   const cancelButtonStyle = {
@@ -549,11 +549,11 @@ function NFTDetailsPage() {
   };
 
   const listButtonHoverStyle = {
-    backgroundColor: '#1288b0', // Darker light blue
+    backgroundColor: '#1288b0', 
   };
 
   const cancelButtonHoverStyle = {
-    backgroundColor: '#B22222', // Darker red
+    backgroundColor: '#B22222', 
   };
 
   const modalButtonStyle = {
@@ -569,16 +569,16 @@ function NFTDetailsPage() {
 
   const modalListButtonStyle = {
     ...modalButtonStyle,
-    backgroundColor: '#ADD8E6', // Light blue
+    backgroundColor: '#ADD8E6',
   };
 
   const modalListButtonHoverStyle = {
-    backgroundColor: '#1288b0', // Darker light blue
+    backgroundColor: '#1288b0', 
   };
 
   const modalCancelButtonStyle = {
     ...modalButtonStyle,
-    backgroundColor: '#F08080', // Light red
+    backgroundColor: '#F08080', 
   };
 
   const modalCancelButtonHoverStyle = {

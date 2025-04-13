@@ -45,7 +45,7 @@ function Navbar() {
       justifyContent: 'space-between',
       alignItems: 'center',
     }}>
-      {/* Logo (Placeholder) */}
+
       <Logo />
 
       {/* Navigation Buttons */}

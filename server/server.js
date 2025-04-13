@@ -18,50 +18,50 @@ app.use('/', profileRoutes);
 app.use('/', likesRoutes);
 app.use('/', listingsRoutes);
 
-async function createNftTable() {
-  try {
-    const nftTable = `
-      CREATE TABLE IF NOT EXISTS nfts (
-          token_id INTEGER PRIMARY KEY,
-          owner VARCHAR(255) NOT NULL,
-          metadata TEXT NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE
-      );
-    `;
-    await pool.query(nftTable);
-    console.log('NFT table created or already exists.');
+// async function createNftTable() {
+//   try {
+//     const nftTable = `
+//       CREATE TABLE IF NOT EXISTS nfts (
+//           token_id INTEGER PRIMARY KEY,
+//           owner VARCHAR(255) NOT NULL,
+//           metadata TEXT NOT NULL,
+//           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+//           updated_at TIMESTAMP WITH TIME ZONE
+//       );
+//     `;
+//     await pool.query(nftTable);
+//     console.log('NFT table created or already exists.');
 
-    const updateTrigger = `
-      CREATE OR REPLACE FUNCTION update_updated_at()
-      RETURNS TRIGGER AS $$
-      BEGIN
-          NEW.updated_at = now();
-          RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql;
-    `;
-    await pool.query(updateTrigger);
-    console.log('Function update_updated_at created or replaced.');
+//     const updateTrigger = `
+//       CREATE OR REPLACE FUNCTION update_updated_at()
+//       RETURNS TRIGGER AS $$
+//       BEGIN
+//           NEW.updated_at = now();
+//           RETURN NEW;
+//       END;
+//       $$ LANGUAGE plpgsql;
+//     `;
+//     await pool.query(updateTrigger);
+//     console.log('Function update_updated_at created or replaced.');
 
-    const nftUpdateTrigger = `
-      DO $$ 
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_nfts_updated_at') THEN
-          CREATE TRIGGER update_nfts_updated_at
-          BEFORE UPDATE ON nfts
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at();
-        END IF;
-      END $$;
-    `;
+//     const nftUpdateTrigger = `
+//       DO $$ 
+//       BEGIN
+//         IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_nfts_updated_at') THEN
+//           CREATE TRIGGER update_nfts_updated_at
+//           BEFORE UPDATE ON nfts
+//           FOR EACH ROW
+//           EXECUTE FUNCTION update_updated_at();
+//         END IF;
+//       END $$;
+//     `;
 
-    await pool.query(nftUpdateTrigger);
-    console.log('Trigger update_nfts_updated_at created or already exists.');
-  } catch (error) {
-    console.error('Error creating NFT table:', error);
-  }
-}
+//     await pool.query(nftUpdateTrigger);
+//     console.log('Trigger update_nfts_updated_at created or already exists.');
+//   } catch (error) {
+//     console.error('Error creating NFT table:', error);
+//   }
+// }
 
 async function createUsernamesTable() {
   try {
@@ -96,28 +96,28 @@ async function createLikesTable() {
   }
 }
 
-async function createListingsTable() {
-  try {
-    const listingsTable = `
-      CREATE TABLE IF NOT EXISTS nft_listings (
-        listingId INTEGER PRIMARY KEY,
-        tokenId INTEGER NOT NULL,
-        price DECIMAL(18, 4) NOT NULL,
-        seller VARCHAR(255) NOT NULL,
-        isSold BOOLEAN DEFAULT FALSE
-      );
-    `;
-    await pool.query(listingsTable);
-    console.log('NFT Listings table created or already exists.');
-  } catch (error) {
-    console.error('Error creating NFT Listings table:', error);
-  }
-}
+// async function createListingsTable() {
+//   try {
+//     const listingsTable = `
+//       CREATE TABLE IF NOT EXISTS nft_listings (
+//         listingId INTEGER PRIMARY KEY,
+//         tokenId INTEGER NOT NULL,
+//         price DECIMAL(18, 4) NOT NULL,
+//         seller VARCHAR(255) NOT NULL,
+//         isSold BOOLEAN DEFAULT FALSE
+//       );
+//     `;
+//     await pool.query(listingsTable);
+//     console.log('NFT Listings table created or already exists.');
+//   } catch (error) {
+//     console.error('Error creating NFT Listings table:', error);
+//   }
+// }
 
-createNftTable();
+//createNftTable();
 createUsernamesTable();
 createLikesTable();
-createListingsTable();
+//createListingsTable();
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

@@ -36,6 +36,7 @@ function LoginPage() {
           borderRadius: '5px',
         }}
         onClick={handleContinueWithoutLogin}
+        disabled={!isConnected}
       >
         Continue
       </button>
