@@ -8,10 +8,11 @@ contract NFTAuctionFactory {
     using Counters for Counters.Counter;
 
     mapping(uint256 => NFTAuction) public auctions;
+    mapping(uint256 => uint256) public auctionsByTokenId;
 
     event AuctionCreated(uint256 auctionId, address auctionAddress);
-
     event AuctionDeleted(uint256 auctionId);
+    event AuctionOver(uint256 auctionId);
 
     Counters.Counter private auctionCounter;
 
@@ -30,15 +31,15 @@ contract NFTAuctionFactory {
             _startTime,
             _endTime,
             _tokenId,
-            _instantBuyPrice
+            _instantBuyPrice,
+            msg.sender
         );
 
-        uint256 auctionId = auctionCounter.current();
         auctionCounter.increment();
+        uint256 auctionId = auctionCounter.current();
 
         auctions[auctionId] = newAuction;
-
-        newAuction.startAuction();
+        auctionsByTokenId[_tokenId] = auctionId;
 
         emit AuctionCreated(auctionId, address(newAuction));
 
@@ -50,13 +51,40 @@ contract NFTAuctionFactory {
 
         NFTAuction auction = auctions[auctionId];
 
-        require(auction.owner() == msg.sender, "You are not the owner of this auction");
+        uint256 tokenId = auction.tokenId();
 
-        auction.cancelAuction();
+        auction.cancelAuction(msg.sender);
 
         delete auctions[auctionId];
+        delete auctionsByTokenId[tokenId];
 
         emit AuctionDeleted(auctionId);
+    }
+
+    function auctionOver(uint256 auctionId) external {
+        require(address(auctions[auctionId]) != address(0), "Auction does not exist");
+
+        NFTAuction auction = auctions[auctionId];
+
+        uint256 tokenId = auction.tokenId();
+
+        auction.acceptBid(msg.sender);
+
+        delete auctionsByTokenId[tokenId];
+
+        emit AuctionOver(auctionId);
+    }
+
+    function auctionOverInstantly(uint256 auctionId) external {
+        require(address(auctions[auctionId]) != address(0), "Auction does not exist");
+
+        NFTAuction auction = auctions[auctionId];
+
+        uint256 tokenId = auction.tokenId();
+
+        delete auctionsByTokenId[tokenId];
+
+        emit AuctionOver(auctionId);
     }
 
     function getAuctionInfo(uint256 auctionId) external view returns (
@@ -67,7 +95,8 @@ contract NFTAuctionFactory {
         uint256 tokenId,
         uint256 instantBuyPrice,
         address highestBidder,
-        uint256 highestBid
+        uint256 highestBid,
+        bool auctionEnded
     ) {
 
         require(address(auctions[auctionId]) != address(0), "Auction does not exist");
@@ -75,15 +104,20 @@ contract NFTAuctionFactory {
         NFTAuction auction = auctions[auctionId];
 
         return (
-            auction.owner(),
+            auction.creator(),
             auction.defaultPrice(),
             auction.startTime(),
             auction.endTime(),
             auction.tokenId(),
             auction.instantBuyPrice(),
             auction.highestBidder(),
-            auction.highestBid()
+            auction.highestBid(),
+            auction.auctionEnded()
         );
+    }
+
+    function getAuctionAddress(uint256 auctionId) external view returns (address) {
+        return address(auctions[auctionId]);
     }
 
 

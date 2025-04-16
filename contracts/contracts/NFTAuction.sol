@@ -16,6 +16,7 @@ contract NFTAuction is ERC721, Ownable {
     uint256 public highestBid;
     bool public auctionEnded;
     uint256 public tokenId;
+    address public creator; 
     
     struct Bid {
         address bidder;
@@ -29,6 +30,7 @@ contract NFTAuction is ERC721, Ownable {
     event BidPlaced(address indexed bidder, uint256 amount);
     event AuctionCancelled(address indexed owner);
     event AuctionEnded(address indexed winner, uint256 amount, uint256 tokenId);
+    event AuctionWaiting(address indexed winner, uint256 amount, uint256 tokenId);
     event AuctionStarted(uint256 startTime, uint256 endTime);
     event InstantBuy(address indexed buyer, uint256 price);
     event ManualBidAccepted(address indexed bidder, uint256 amount);
@@ -54,7 +56,7 @@ contract NFTAuction is ERC721, Ownable {
         _;
     }
 
-    constructor(address _nftContract, uint256 _defaultPrice, uint256 _startTime, uint256 _endTime, uint256 _tokenId, uint256 _instantBuyPrice) 
+    constructor(address _nftContract, uint256 _defaultPrice, uint256 _startTime, uint256 _endTime, uint256 _tokenId, uint256 _instantBuyPrice, address _creator) 
         ERC721("NFTAuction", "NA") 
     {
         nftContract = IERC721(_nftContract);
@@ -65,21 +67,24 @@ contract NFTAuction is ERC721, Ownable {
         instantBuyPrice = _instantBuyPrice;
         auctionCancelled = false;
         auctionEnded = false;
+        creator = _creator;
     }
 
-    function startAuction() external onlyOwner {
+    function startAuction(address _creator) external {
+        require(_creator == creator, "Only the auction creator can start the auction");
         require(block.timestamp >= startTime, "Start time is not reached yet");
         require(block.timestamp < endTime, "End time is in the past");
         
-        nftContract.transferFrom(owner(), address(this), tokenId);
+        nftContract.transferFrom(creator, address(this), tokenId);
         
         emit AuctionStarted(startTime, endTime);
     }
 
-    function cancelAuction() external onlyOwner auctionNotCancelled auctionNotEnded {
+    function cancelAuction(address _creator) external auctionNotCancelled auctionNotEnded {
+        require(_creator == creator, "Only the auction creator can cancel the auction");
         auctionCancelled = true;
-        nftContract.transferFrom(address(this), owner(), tokenId);
-        emit AuctionCancelled(owner());
+        nftContract.transferFrom(address(this), creator, tokenId);
+        emit AuctionCancelled(creator);
     }
 
     function placeBid() external payable auctionNotEnded auctionNotCancelled onlyWhenAuctionStarted {
@@ -102,48 +107,29 @@ contract NFTAuction is ERC721, Ownable {
         require(instantBuyPrice > 0, "Instant buy price is not set");
         require(msg.value == instantBuyPrice, "Incorrect instant buy price");
 
-        payable(owner()).transfer(instantBuyPrice);
+        payable(creator).transfer(instantBuyPrice);
         auctionEnded = true;
         nftContract.transferFrom(address(this), msg.sender, tokenId);
         
         emit InstantBuy(msg.sender, instantBuyPrice);
     }
 
-    function acceptManualBid() external onlyOwner onlyWhenAuctionEnded {
-        require(!auctionCancelled, "Auction has been cancelled");
-        require(highestBid < defaultPrice, "Bid is higher than or equal to default price");
+    function acceptBid(address _creator) external payable onlyWhenAuctionEnded auctionNotCancelled {
+    require(_creator == creator, "Only the auction creator can finalize the auction");
 
-        payable(owner()).transfer(highestBid);
-        nftContract.transferFrom(address(this), highestBidder, tokenId);
-        
+    if (highestBidder == address(0)) {
+        nftContract.transferFrom(address(this), creator, tokenId);
         auctionEnded = true;
-        emit ManualBidAccepted(highestBidder, highestBid);
+
+        emit AuctionEnded(address(0), 0, tokenId);
+    } else {
+        payable(creator).transfer(highestBid);
+        nftContract.transferFrom(address(this), highestBidder, tokenId);
+        auctionEnded = true;
+
         emit AuctionEnded(highestBidder, highestBid, tokenId);
     }
-
-    function declineManualBid() external onlyOwner onlyWhenAuctionEnded {
-        require(!auctionCancelled, "Auction has been cancelled");
-        require(highestBid < defaultPrice, "Bid is higher than or equal to default price");
-
-        payable(highestBidder).transfer(highestBid);
-
-        auctionEnded = true;
-        emit ManualBidDeclined(highestBidder, highestBid);
-    }
-
-    function acceptBid() external onlyOwner onlyWhenAuctionEnded {
-        require(!auctionCancelled, "Auction has been cancelled");
-
-        if (highestBid >= defaultPrice) {
-            payable(owner()).transfer(highestBid);
-            nftContract.transferFrom(address(this), highestBidder, tokenId);
-            emit AuctionEnded(highestBidder, highestBid, tokenId);
-        } else {
-            revert("Bid is below the default price. Owner can cancel or accept manually.");
-        }
-
-        auctionEnded = true;
-    }
+}
 
     function getCurrentHighestBid() external view returns (address, uint256) {
         return (highestBidder, highestBid);

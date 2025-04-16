@@ -83,19 +83,18 @@ function Navbar() {
           {isMoreMenuOpen && <MoreMenu onClose={() => setIsMoreMenuOpen(false)} />}
         </div>
       </div>
-
       {/* Balance Display */}
       <div style={{
-        marginLeft: '50px',
+        marginLeft: 'auto',
         color: 'darkblue',
         fontWeight: 'bold',
         minWidth: '150px',
         textAlign: 'right',
-        padding: '8px 15px',
+        padding: '8px 15px 8px 5px',
         border: '1px solid lightblue',
         borderRadius: '8px',
         backgroundColor: '#f0f0f0',
-        marginRight: 'auto',   
+        marginRight: '50px',   
       }}>
         {isConnected && balance !== null ? (
           `Balance: ${parseFloat(balance).toFixed(2)} POL` 

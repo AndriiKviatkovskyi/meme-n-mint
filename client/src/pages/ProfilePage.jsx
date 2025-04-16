@@ -188,6 +188,13 @@ function ProfilePage() {
       return;
     }
 
+    if (newUsername.length > 24) {
+      alert('Username must be at most 24 characters long.');
+      return;
+    }
+
+
+    
     if (newUsername === username) {
       return;
     }

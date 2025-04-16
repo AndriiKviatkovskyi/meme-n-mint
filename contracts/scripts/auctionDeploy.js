@@ -18,13 +18,14 @@ async function main() {
       dummyStartTime,
       dummyEndTime,
       dummyTokenId,
-      dummyInstantBuyPrice
+      dummyInstantBuyPrice,
+      dummyNFTContract
     );
   
     const auctionAddress = await auction.getAddress();
     console.log("NFTAuction deployed to:", auctionAddress);
 
-    const verifyCommand = `npx hardhat verify --network amoy ${auctionAddress} "${dummyNFTContract}" "${dummyDefaultPrice.toString()}" "${dummyStartTime}" "${dummyEndTime}" "${dummyTokenId}" "${dummyInstantBuyPrice.toString()}"`;
+    const verifyCommand = `npx hardhat verify --network amoy ${auctionAddress} "${dummyNFTContract}" "${dummyDefaultPrice.toString()}" "${dummyStartTime}" "${dummyEndTime}" "${dummyTokenId}" "${dummyInstantBuyPrice.toString()}" "${dummyNFTContract}"`;
 
     console.log("Run the following command to verify the contract:");
     console.log(verifyCommand);
