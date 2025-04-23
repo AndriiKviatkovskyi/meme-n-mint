@@ -49,7 +49,7 @@ function Navbar() {
       <Logo />
 
       {/* Navigation Buttons */}
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginRight: '0px', marginLeft: 'auto' }}>
         <NavbarButton to="/browse">Browse</NavbarButton>
         <NavbarButton to="/stats">Stats</NavbarButton>
         <NavbarButton to="/activity">Activity</NavbarButton>
@@ -119,6 +119,7 @@ const NavbarButton = ({ to, children }) => (
         cursor: 'pointer',
         borderRadius: '5px',
         transition: 'background-color 0.3s, color 0.3s',
+        outline: 'none'
       }}
       onMouseOver={(e) => {
         e.target.style.backgroundColor = 'darkblue';

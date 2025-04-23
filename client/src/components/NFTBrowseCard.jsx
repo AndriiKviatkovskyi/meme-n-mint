@@ -8,6 +8,14 @@ function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, create
   const { walletAddress } = useWallet();
   const navigate = useNavigate();
 
+  const shortCreator = creator && creator.length > 24
+    ? creator.slice(0, 24) + '...'
+    : creator;
+
+  const shortOwner = owner && owner.length > 24
+    ? owner.slice(0, 24) + '...'
+    : owner;
+
   useEffect(() => {
     const fetchLikes = async () => {
       try {
@@ -74,8 +82,10 @@ function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, create
         <h3 style={idStyle}>{id || 'Untitled'}</h3>
         <h3 style={nameStyle}>{name || 'Untitled'}</h3>
         <p style={descriptionStyle}>{description || 'No description provided.'}</p>
-        <p style={ownerStyle}>Owner: {owner}</p>
-        <p style={creatorStyle}>Creator: {creator}</p>
+        <p style={ownerStyle}>Owner:</p>
+        <p style={ownerStyle}>{shortOwner}</p>
+        <p style={creatorStyle}>Creator:</p>
+        <p style={creatorStyle}>{shortCreator}</p>
         <p style={creationTimeStyle}>Created At: {created_at}</p>
         <button
           onClick={handleLikeToggle}
@@ -90,7 +100,7 @@ function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, create
           }}
           disabled={!walletAddress}
         >
-          {liked ? 'Liked' : 'Like'} {likes}
+          {liked ? 'LOLed' : 'LOL'} {" : "} {likes}
         </button>
       </div>
       <button onClick={handleViewDetailsClick} style={viewDetailsButtonStyle}>
@@ -104,7 +114,7 @@ const cardStyle = {
   border: '1px solid #ddd',
   borderRadius: '8px',
   margin: '10px',
-  width: '300px',
+  width: '256px',
   backgroundColor: '#f9f9f9',
   overflow: 'hidden',
   display: 'flex',

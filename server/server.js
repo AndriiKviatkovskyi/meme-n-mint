@@ -68,7 +68,7 @@ async function createUsernamesTable() {
     const usernamesTable = `
       CREATE TABLE IF NOT EXISTS wallets_usernames (
         wallet VARCHAR(255) PRIMARY KEY,
-        username VARCHAR(50) UNIQUE
+        username VARCHAR(100) UNIQUE
       );
     `;
     await pool.query(usernamesTable);

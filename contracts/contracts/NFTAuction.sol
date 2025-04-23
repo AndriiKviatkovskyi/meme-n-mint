@@ -82,6 +82,11 @@ contract NFTAuction is ERC721, Ownable {
 
     function cancelAuction(address _creator) external auctionNotCancelled auctionNotEnded {
         require(_creator == creator, "Only the auction creator can cancel the auction");
+
+        if (highestBidder != address(0)) {
+            payable(highestBidder).transfer(highestBid);
+        }
+
         auctionCancelled = true;
         nftContract.transferFrom(address(this), creator, tokenId);
         emit AuctionCancelled(creator);
@@ -106,6 +111,10 @@ contract NFTAuction is ERC721, Ownable {
     function buyInstantly() external payable auctionNotEnded auctionNotCancelled {
         require(instantBuyPrice > 0, "Instant buy price is not set");
         require(msg.value == instantBuyPrice, "Incorrect instant buy price");
+
+        if (highestBidder != address(0)) {
+            payable(highestBidder).transfer(highestBid);
+        }
 
         payable(creator).transfer(instantBuyPrice);
         auctionEnded = true;

@@ -9,6 +9,7 @@ contract NFTAuctionFactory {
 
     mapping(uint256 => NFTAuction) public auctions;
     mapping(uint256 => uint256) public auctionsByTokenId;
+    mapping(address => uint256[]) public auctionsByCreator;
 
     event AuctionCreated(uint256 auctionId, address auctionAddress);
     event AuctionDeleted(uint256 auctionId);
@@ -40,6 +41,7 @@ contract NFTAuctionFactory {
 
         auctions[auctionId] = newAuction;
         auctionsByTokenId[_tokenId] = auctionId;
+        auctionsByCreator[msg.sender].push(auctionId);
 
         emit AuctionCreated(auctionId, address(newAuction));
 
@@ -55,6 +57,7 @@ contract NFTAuctionFactory {
 
         auction.cancelAuction(msg.sender);
 
+        _removeAuctionFromCreator(auction.creator(), auctionId);
         delete auctions[auctionId];
         delete auctionsByTokenId[tokenId];
 
@@ -70,6 +73,7 @@ contract NFTAuctionFactory {
 
         auction.acceptBid(msg.sender);
 
+        _removeAuctionFromCreator(auction.creator(), auctionId);
         delete auctionsByTokenId[tokenId];
 
         emit AuctionOver(auctionId);
@@ -116,6 +120,17 @@ contract NFTAuctionFactory {
         );
     }
 
+    function _removeAuctionFromCreator(address creator, uint256 auctionId) internal {
+        uint256[] storage creatorAuctions = auctionsByCreator[creator];
+        for (uint256 i = 0; i < creatorAuctions.length; i++) {
+            if (creatorAuctions[i] == auctionId) {
+                creatorAuctions[i] = creatorAuctions[creatorAuctions.length - 1];
+                creatorAuctions.pop();
+                break;
+            }
+        }
+    }   
+
     function getAuctionAddress(uint256 auctionId) external view returns (address) {
         return address(auctions[auctionId]);
     }
@@ -123,6 +138,10 @@ contract NFTAuctionFactory {
 
     function getAuctionCount() external view returns (uint256) {
         return auctionCounter.current();
+    }
+
+    function getAuctionsByCreator(address creator) external view returns (uint256[] memory) {
+        return auctionsByCreator[creator];
     }
 
 }

@@ -9,6 +9,10 @@ function NFTCard({ imageUrl, id, name, description, creator, created_at, likes }
     navigate(`/nft/${id}`);
   };
 
+  const shortCreator = creator && creator.length > 24
+    ? creator.slice(0, 24) + '...'
+    : creator;
+
   return (
     <div style={cardStyle}>
       <div style={imageFrameStyle}>
@@ -22,7 +26,8 @@ function NFTCard({ imageUrl, id, name, description, creator, created_at, likes }
         <h3 style={idStyle}>{id || 'Untitled'}</h3>
         <h3 style={nameStyle}>{name || 'Untitled'}</h3>
         <p style={descriptionStyle}>{description || 'No description provided.'}</p>
-        <p style={creatorStyle}>Creator: {creator}</p>
+        <p style={creatorStyle}>Creator:</p>
+        <p style={creatorStyle}>{shortCreator}</p>
         <p style={creationTimeStyle}>Created At: {created_at}</p>
         <p style={likesStyle}>Likes: {likes || 0}</p>
       </div>
@@ -37,7 +42,7 @@ const cardStyle = {
   border: '1px solid #ddd',
   borderRadius: '8px',
   margin: '10px',
-  width: '300px',
+  width: '256px',
   backgroundColor: '#f9f9f9',
   overflow: 'hidden',
   display: 'flex',

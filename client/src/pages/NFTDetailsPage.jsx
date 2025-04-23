@@ -538,33 +538,33 @@ function NFTDetailsPage() {
 
 
   async function getMarketplaceContract() {
-      const abi = await getMarketplaceABI(MARKETPLACE_CONTRACT_ADDRESS);
+      const abi = await getMarketplaceABI();
       return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, abi, signer);
   }
 
   async function getMarketplaceContractForView() {
-    const abi = await getMarketplaceABI(MARKETPLACE_CONTRACT_ADDRESS);
+    const abi = await getMarketplaceABI();
     return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, abi, provider);
   }
 
 
   async function getNFTContract() {
-    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
+    const abi = await getNFTABI();
     return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, signer);
   }
 
   async function getNFTContractForView() {
-    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
+    const abi = await getNFTABI();
     return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
   }
 
   async function getAuctionFactoryContract() {
-    const abi = await getAuctionFactoryABI(NFT_CONTRACT_ADDRESS);
+    const abi = await getAuctionFactoryABI();
     return new ethers.Contract(AUCTION_FACTORY_CONTRACT_ADDRESS, abi, signer);
   }
 
   async function getAuctionFactoryContractForView() {
-    const abi = await getAuctionFactoryABI(NFT_CONTRACT_ADDRESS);
+    const abi = await getAuctionFactoryABI();
     return new ethers.Contract(AUCTION_FACTORY_CONTRACT_ADDRESS, abi, provider);
   }
 

@@ -4,7 +4,7 @@ import MetamaskConnection from '../components/MetamaskConnection';
 import NFTCard from '../components/NFTCard';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import {NFT_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
+import {NFT_CONTRACT_ADDRESS, AUCTION_FACTORY_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
 
 
 function ProfilePage() {
@@ -13,6 +13,7 @@ function ProfilePage() {
   const [newUsername, setNewUsername] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [nfts, setNfts] = useState([]);
+  const [auctionNfts, setAuctionNfts] = useState([]);
 
   useEffect(() => {
     const fetchUsername = async () => {
@@ -43,9 +44,9 @@ function ProfilePage() {
         try {
           const nftContract = await getNFTContract();
           const total = await nftContract.totalSupply();
-          console.log(total);
+          //console.log(total);
           for (let i = 1; i <= Number(total); i++) {
-            console.log(i);
+            //console.log(i);
             const tokenId = i;
             const [metadata, owner] = await Promise.all([
               nftContract.tokenURI(tokenId),
@@ -162,6 +163,135 @@ function ProfilePage() {
     fetchUserNFTsWithMetadata();
   }, [walletAddress]);
 
+  useEffect(() => {
+    const fetchUserAuctionsWithMetadata = async () => {
+      const nftAuctionedData = [];
+      if (walletAddress) {
+        try {
+          const auctionFactoryContract = await getAuctionFactoryContractForView();
+          const auctionIds = await auctionFactoryContract.getAuctionsByCreator(walletAddress);
+          const nftContract = await getNFTContract();
+          for (let i = 0; i < auctionIds.length; i++) {
+            const auctionData = await auctionFactoryContract.getAuctionInfo(Number(auctionIds[i]));
+            const tokenId = auctionData.tokenId;
+            console.log(tokenId);
+            const [metadata, owner] = await Promise.all([
+              nftContract.tokenURI(tokenId),
+              nftContract.ownerOf(tokenId)
+            ]);
+            nftAuctionedData.push({
+              token_id: tokenId,
+              owner,
+              metadata
+            });
+          }
+          if (nftAuctionedData.length !== 0) {
+            const transformedNFTs = await Promise.all(
+              nftAuctionedData.map(async (nft) => {
+                try {
+                  const uri = nft.metadata.replace("ipfs://", "");
+                  const metadataResponse = await fetch(`http://localhost:8080/ipfs/${uri}`);
+                  if (metadataResponse.ok) {
+                    const metadata = await metadataResponse.json();
+                    const imageUri = metadata.image.replace("ipfs://", "");
+                    const timestamp = metadata.creationTime;
+
+                    const dateObject = new Date(timestamp);
+
+                    const year = dateObject.getFullYear();
+                    const month = dateObject.getMonth() + 1;
+                    const day = dateObject.getDate();
+                    const hours = dateObject.getHours();
+                    const minutes = dateObject.getMinutes();
+                    const seconds = dateObject.getSeconds();
+
+                    const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+                    let creatorString = metadata.creator;
+
+                    if (creatorString) {
+                      try {
+                        const response = await fetch(`http://localhost:5000/api/usernames?walletAddress=${creatorString}`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          creatorString = data.username;
+                        } else {
+                          console.error('Failed to fetch username');
+                        }
+                      } catch (error) {
+                        console.error('Error fetching username:', error);
+                      }
+                    }
+
+                    let likeCount = 0;
+
+                    try {
+                      const nft_id = nft.token_id;
+                      const response = await fetch(`http://localhost:5000/api/likes/nft/${nft_id}`);
+                      if (!response.ok) {
+                        throw new Error('Failed to fetch like count');
+                      }
+                      const likesData = await response.json();
+                      likeCount = likesData.like_count;
+                    } catch (err) {
+                      setError(err.message);
+                    }
+
+                    return {
+                      imageUrl: imageUri ? `http://localhost:8080/ipfs/${imageUri}` : null,
+                      id: nft.token_id,
+                      name: metadata.name,
+                      description: metadata.description,
+                      creator: creatorString,
+                      created_at: formattedDate,
+                      likes: likeCount,
+                    };
+                  } else {
+                    console.error('Failed to fetch metadata for NFT:', nft);
+                    return {
+                      imageUrl: null,
+                      id: nft.token_id,
+                      name: 'Error loading name',
+                      description: 'Error loading description',
+                      creator: 'Error',
+                      created_at: nft.created_at,
+                      likes: 0,
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching metadata for NFT:', nft, error);
+                  return {
+                    imageUrl: null,
+                    id: nft.token_id,
+                    name: 'Error loading name',
+                    description: 'Error loading description',
+                    creator: 'Error',
+                    created_at: nft.created_at,
+                    likes: 0,
+                  };
+                }
+              })
+            );
+            console.log(transformedNFTs);
+            setAuctionNfts(transformedNFTs);
+            console.log(auctionNfts);
+          } else {
+            console.error('Failed to fetch user NFTs');
+          }
+        } catch (error) {
+          console.error('Error fetching user NFTs:', error);
+        }
+      } else {
+        setAuctionNfts([]);
+      }
+    };
+
+    fetchUserAuctionsWithMetadata();
+  }, [walletAddress]);
+
+
+  
+
   const getNFTABI = async () => {
     const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
         const response = await axios.get(url);
@@ -174,6 +304,20 @@ function ProfilePage() {
   async function getNFTContract() {
     const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
     return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+  }
+
+  const getAuctionFactoryABI = async () => {
+      const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${AUCTION_FACTORY_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
+      const response = await axios.get(url);
+      if (response.data.status !== "1") {
+          throw new Error("Failed to fetch ABI from Polygonscan");
+      }
+      return JSON.parse(response.data.result);
+  }
+
+  async function getAuctionFactoryContractForView() {
+      const abi = await getAuctionFactoryABI();
+      return new ethers.Contract(AUCTION_FACTORY_CONTRACT_ADDRESS, abi, provider);
   }
 
   const handleInputChange = (event) => {
@@ -255,6 +399,21 @@ function ProfilePage() {
           <h2 style={{ marginTop: '20px' }}>Your NFTs</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap' }}>
             {nfts.map((nft) => (
+              <NFTCard
+                key={nft.id}
+                imageUrl={nft.imageUrl}
+                id = {nft.id}
+                name={nft.name}
+                description={nft.description}
+                creator={nft.creator}
+                created_at={nft.created_at}
+                likes={nft.likes}
+              />
+            ))}
+          </div>
+          <h2 style={{ marginTop: '20px' }}>Your Auctions</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+            {auctionNfts.map((nft) => (
               <NFTCard
                 key={nft.id}
                 imageUrl={nft.imageUrl}

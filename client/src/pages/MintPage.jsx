@@ -274,6 +274,7 @@ function MintPage() {
     display: 'flex',
     gap: '10px',
     justifyContent: 'flex-end',
+    height: '80%',
   };
 
   const buttonStyle = {
@@ -286,6 +287,7 @@ function MintPage() {
     ...buttonStyle,
     backgroundColor: '#f0f0f0',
     border: '1px solid #ccc',
+    marginBottom: '0px'
   };
 
   const mintButtonStyle = {
@@ -293,6 +295,7 @@ function MintPage() {
     backgroundColor: '#007bff',
     color: 'white',
     border: 'none',
+    marginBottom: '0px'
   };
 
   const pageStyle = {
@@ -311,7 +314,6 @@ function MintPage() {
   return (
     <div style={pageStyle}>
       <h1>Meme and Mint!</h1>
-      <MetamaskConnection />
 
       {!isConnected ? (
         <p>Sorry, no meme-n-minting without a wallet :(</p>
