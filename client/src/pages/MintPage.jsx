@@ -109,11 +109,11 @@ function MintPage() {
     const marketplace = event.args[2];
     const minter = event.args[3];
 
-    console.log(`✅ NFT Minted!`);
-    console.log(`🆔 Token ID: ${tokenId}`);
-    console.log(`🔗 Metadata URL: ${tokenURI}`);
-    console.log(`👤 Minter: ${minter}`);
-    console.log(`🏪 Marketplace: ${marketplace}`);
+    console.log(`NFT Minted!`);
+    console.log(`Token ID: ${tokenId}`);
+    console.log(`Metadata URL: ${tokenURI}`);
+    console.log(`Minter: ${minter}`);
+    console.log(`Marketplace: ${marketplace}`);
 
     setMintingStatus('success');
       setMintingMessage('Minting successful!');
@@ -200,33 +200,6 @@ function MintPage() {
       console.log('Minting successful:', data);
       const metadataUri = data.metadataUri;
       const id = await mintNFT(metadataUri);
-
-      try {
-        const publicKey = await signer.getAddress();
-        const databaseResponse = await fetch('http://localhost:5000/api/nfts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tokenId: id,
-            owner: publicKey,
-            url: metadataUri,
-          }),
-        });
-  
-        if (!databaseResponse.ok) {
-          const errorData = await response.json();
-          console.error('Database error:', errorData);
-          return;
-        }
-
-
-      } catch ( error) {
-        console.error('Mint error:', error);
-        setMintingStatus('failed');
-        setMintingMessage(`Minting failed: ${errorData?.message || response.statusText}`);
-      }
 
     } catch (error) {
       console.error('Error sending minting request:', error);

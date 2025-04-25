@@ -44,8 +44,6 @@ function BrowsePage() {
       }
       try {
         const nftContract = await getNFTContract();
-        console.log(nftContract);
-        console.log(isConnected);
         const total = await nftContract.totalSupply();
         for (let i = 1; i <= Number(total); i++) {
           const tokenId = i;

@@ -4,9 +4,7 @@ import Web3Modal from 'web3modal';
 import { useWallet } from '../context/WalletContext'; 
 
 
-const providerOptions = {
-
-};
+const providerOptions = {};
 
 let web3Modal;
 

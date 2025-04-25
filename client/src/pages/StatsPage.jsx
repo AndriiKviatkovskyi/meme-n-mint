@@ -4,7 +4,7 @@ function StatsPage() {
   return (
     <div style={{ padding: '20px', backgroundColor: 'white' }}>
       <h1>Marketplace Statistics</h1>
-      {/* Content for Stats Page */}
+      <h2>Coming soon...</h2>
     </div>
   );
 }

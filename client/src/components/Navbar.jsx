@@ -108,6 +108,7 @@ function Navbar() {
   );
 }
 
+{/* Navbar button */}
 const NavbarButton = ({ to, children }) => (
   <Link to={to} style={{ textDecoration: 'none', margin: '0 10px' }}>
     <button

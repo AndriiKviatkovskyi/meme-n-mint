@@ -31,8 +31,6 @@ function NFTDetailsPage() {
   const [instantBuyPrice, setInstantBuyPrice] = useState('');
 
 
-
-
   useEffect(() => {
     const fetchNFTDetailsWithMetadata = async (id) => {
       if (!provider) {
@@ -146,7 +144,6 @@ function NFTDetailsPage() {
     }
     try {
       const marketplaceContract = await getMarketplaceContractForView();
-      console.log(nftDetails.id);
       const rawListingId = await marketplaceContract.getListingId(nftDetails.id);
       if(Number(rawListingId) === 0){
         return;
@@ -161,7 +158,6 @@ function NFTDetailsPage() {
           seller: seller,
         };
       }
-      console.log(data);
       setListings([data]);
       }
     } catch (error) {
@@ -197,7 +193,6 @@ function NFTDetailsPage() {
       ] = await factoryContract.getAuctionInfo(auctionId);
 
       const now = Math.floor(Date.now() / 1000);
-      console.log(now);
       if (endTime < now) {
         setIsPastFinish(true);
       }
@@ -214,7 +209,6 @@ function NFTDetailsPage() {
         auctionEnded
       };
   
-      console.log("Auction data:", auctionData);
       if(!auctionEnded){
         setAuction(auctionData);
         setAuctionAddress(auctionAddressFromFactory);
@@ -255,7 +249,6 @@ function NFTDetailsPage() {
         })
       );
   
-      console.log("Formatted bids with usernames:", formattedBids);
       setBids(formattedBids);
     } catch (err) {
       console.error("Error fetching bids:", err);
@@ -274,230 +267,16 @@ function NFTDetailsPage() {
     if (nftDetails) {
       setIsOwner(ownerAddress?.toLowerCase() === walletAddress?.toLowerCase());
       fetchAuction();
-      console.log(bids);
     }
   }, [nftDetails, ownerAddress, walletAddress]);
 
   useEffect(() => {
     if (nftDetails) {
       fetchAllBids();
-      console.log(bids);
     }
   }, [auctionAddress]);
 
 
-  const handleBuyNow = async () => {
-
-    const buyer = walletAddress;
-
-    if (!listings[0] || !buyer || isNaN(listings[0].price) || listings[0].price <= 0) {
-        console.error('Missing required information to buy NFT.');
-        return;
-    }
-
-    const messageToSign = JSON.stringify({
-        price: listings[0].price,
-        buyer,
-        timestamp: Date.now(),
-    });
-
-    const signature = await getSignature(messageToSign);
-
-    if (!signature) {
-        console.error('User signature failed or was rejected.');
-        return;
-    }
-
-    try {
-        const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: messageToSign, signature, address: buyer }),
-        });
-
-        const verifyResult = await verifyResponse.json();
-        if (!verifyResponse.ok || !verifyResult.verified) {
-            console.error('Signature verification failed on backend:', verifyResult.error);
-            return;
-        }
-
-        console.log('Signature verified successfully.');
-
-        const price = ethers.parseEther(listings[0].price.toString());
-
-
-        const nftContract = await getNFTContract();
-
-        
-        const isApproved = await nftContract.isApprovedForAll(walletAddress, MARKETPLACE_CONTRACT_ADDRESS);
-
-        if (!isApproved) {
-          console.log("Marketplace is not yet approved. Proceeding with approval...");
-          const approveTx = await nftContract.setApprovalForAll(MARKETPLACE_CONTRACT_ADDRESS, true);
-          await approveTx.wait();
-          console.log("Marketplace has been approved.");
-        } else {
-          console.log("Marketplace is already approved.");
-        }
-
-        const contract = await getMarketplaceContract();
-        const tx = await contract.buyItem(NFT_CONTRACT_ADDRESS, listings[0].tokenid, {
-          value: price,
-        });
-        const receipt = await tx.wait();
-        console.log('NFT purchase successful. Tx hash:', tx.hash);
-
-        fetchListings();
-
-        // const response = await fetch(`http://localhost:5000/api/listings/${listings[0].listingid}`, {
-        //     method: 'PUT',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({
-        //         isSold: true,
-        //     }),
-        // });
-
-        // if (response.ok) {
-        //     const data = await response.json();
-        //     console.log('Listing updated to sold successfully:', data.message);
-        //     fetchListings();
-        // } else {
-        //     const errorData = await response.json();
-        //     console.error('Failed to update DB listing:', errorData.error);
-        // }
-
-        // const nftResponse = await fetch(`http://localhost:5000/api/nfts/${listings[0].tokenid}`, {
-        //     method: 'PUT',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({
-        //         owner: buyer,
-        //     }),
-        // });
-
-        // if (nftResponse.ok) {
-        //     const nftData = await nftResponse.json();
-        //     console.log('NFT ownership updated successfully:', nftData.message);
-        //     setIsOwner(true);
-        //     fetchListings();
-        // } else {
-        //     const nftErrorData = await nftResponse.json();
-        //     console.error('Failed to update NFT owner:', nftErrorData.error);
-        // }
-
-    } catch (error) {
-        console.error('Error during purchase process:', error);
-    }
-  };
-
-  const handleCancelSale = async () => {
-    console.log('Cancel sale clicked');
-    
-    if (listings.length > 0 && listings[0]) {
-      //const listingIdToDelete = listings[0].listingid;
-      const tokenIdToDelete = listings[0].tokenid;
-      const seller = walletAddress;
-      const messageToSign = JSON.stringify({
-        tokenId: listings[0].tokenid,
-        seller,
-        timestamp: Date.now(),
-      });
-  
-      const signature = await getSignature(messageToSign);
-  
-      if (!signature) {
-        console.error('User signature failed or was rejected.');
-        return;
-      }
-  
-      try {
-        const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: messageToSign, signature, address: seller }),
-        });
-  
-        const verifyResult = await verifyResponse.json();
-        if (!verifyResponse.ok || !verifyResult.verified) {
-          console.error('Signature verification failed on backend:', verifyResult.error);
-          return;
-        }
-  
-        console.log('Signature verified successfully.');
-  
-        const contract = await getMarketplaceContract();
-
-        try {
-          const listingData = await contract.getListing(tokenIdToDelete);
-          // console.log('Listing data from Marketplace.sol:', {
-          //   nftContractAddress: listingData[0],
-          //   tokenIdValue: listingData[1].toString(),
-          //   price: listingData[2].toString(),
-          //   seller: listingData[3],
-          //   isSold: listingData[4],
-          // });
-        } catch (error) {
-          console.error('Error fetching listing data from contract:', error);
-
-        }
-
-
-        const tx = await contract.cancelListing(NFT_CONTRACT_ADDRESS, tokenIdToDelete);
-        const receipt = await tx.wait();
-        console.log('Sale cancelled on-chain. Tx hash:', tx.hash);
-        console.log(receipt.logs);
-        const event = receipt.logs.find(log => log.fragment.name === "ItemCancelled");
-        if (!event) {
-          console.error("❌ No ItemCancelled event found.");
-          return;
-        }
-  
-        // const dbResponse = await fetch(`http://localhost:5000/api/listings/${listingIdToDelete}`, {
-        //   method: 'DELETE',
-        // });
-  
-        // if (dbResponse.ok) {
-        //   const data = await dbResponse.json();
-        //   console.log('Listing deleted from DB successfully:', data.message);
-        //   fetchListings(); 
-        // } else {
-        //   const errorData = await dbResponse.json();
-        //   console.error('Failed to delete listing from DB:', errorData.error);
-        // }
-        setListings([]);
-        fetchListings();
-      } catch (error) {
-        console.error('Error during cancel sale process:', error);
-      } finally {
-      }
-    } else {
-      console.error('No listing ID available to cancel.');
-    }
-  };
-  
-
-  
-
-  const getSignature = async (message) => {
-    console.log(provider);
-    console.log(account);
-    if (!provider || !account) {
-      console.log("No provider or account");
-      return null;
-    }
-
-    try {
-      const signer = await provider.getSigner(account);
-      console.log("signer: ", signer);
-      const signature = await signer.signMessage(message);
-      console.log('Signature:', signature);
-      return signature;
-    } catch (error) {
-      console.error('Error signing message:', error);
-      setMintingStatus('failed');
-      setMintingMessage('Failed to generate signature.');
-      return null;
-    }
-  };
 
   const getMarketplaceABI = async () => {
     const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${MARKETPLACE_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
@@ -578,9 +357,166 @@ function NFTDetailsPage() {
     return new ethers.Contract(contractAddress, abi, provider);
   }
 
-  const handleListNFT = async () => {
-    console.log('List NFT for sale with price:', listPrice);
+
+  const handleBuyNow = async () => {
+
+    const buyer = walletAddress;
+
+    if (!listings[0] || !buyer || isNaN(listings[0].price) || listings[0].price <= 0) {
+        console.error('Missing required information to buy NFT.');
+        return;
+    }
+
+    const messageToSign = JSON.stringify({
+        price: listings[0].price,
+        buyer,
+        timestamp: Date.now(),
+    });
+
+    const signature = await getSignature(messageToSign);
+
+    if (!signature) {
+        console.error('User signature failed or was rejected.');
+        return;
+    }
+
+    try {
+        const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: messageToSign, signature, address: buyer }),
+        });
+
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResponse.ok || !verifyResult.verified) {
+            console.error('Signature verification failed on backend:', verifyResult.error);
+            return;
+        }
+
+        console.log('Signature verified successfully.');
+
+        const price = ethers.parseEther(listings[0].price.toString());
+
+
+        const nftContract = await getNFTContract();
+
+        
+        const isApproved = await nftContract.isApprovedForAll(walletAddress, MARKETPLACE_CONTRACT_ADDRESS);
+
+        if (!isApproved) {
+          console.log("Marketplace is not yet approved. Proceeding with approval...");
+          const approveTx = await nftContract.setApprovalForAll(MARKETPLACE_CONTRACT_ADDRESS, true);
+          await approveTx.wait();
+          console.log("Marketplace has been approved.");
+        } else {
+          console.log("Marketplace is already approved.");
+        }
+
+        const contract = await getMarketplaceContract();
+        const tx = await contract.buyItem(NFT_CONTRACT_ADDRESS, listings[0].tokenid, {
+          value: price,
+        });
+        const receipt = await tx.wait();
+        console.log('NFT purchase successful. Tx hash:', tx.hash);
+
+        fetchListings();
+
+    } catch (error) {
+        console.error('Error during purchase process:', error);
+    }
+  };
+
+
+  const handleCancelSale = async () => {
+    
+    if (listings.length > 0 && listings[0]) {
+      const tokenIdToDelete = listings[0].tokenid;
+      const seller = walletAddress;
+      const messageToSign = JSON.stringify({
+        tokenId: listings[0].tokenid,
+        seller,
+        timestamp: Date.now(),
+      });
   
+      const signature = await getSignature(messageToSign);
+  
+      if (!signature) {
+        console.error('User signature failed or was rejected.');
+        return;
+      }
+  
+      try {
+        const verifyResponse = await fetch('http://localhost:5000/api/listings/verify-signature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: messageToSign, signature, address: seller }),
+        });
+  
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResponse.ok || !verifyResult.verified) {
+          console.error('Signature verification failed on backend:', verifyResult.error);
+          return;
+        }
+  
+        console.log('Signature verified successfully.');
+  
+        const contract = await getMarketplaceContract();
+
+        try {
+          const listingData = await contract.getListing(tokenIdToDelete);
+        } catch (error) {
+          console.error('Error fetching listing data from contract:', error);
+
+        }
+
+
+        const tx = await contract.cancelListing(NFT_CONTRACT_ADDRESS, tokenIdToDelete);
+        const receipt = await tx.wait();
+        console.log('Sale cancelled on-chain. Tx hash:', tx.hash);
+        console.log(receipt.logs);
+        const event = receipt.logs.find(log => log.fragment.name === "ItemCancelled");
+        if (!event) {
+          console.error("❌ No ItemCancelled event found.");
+          return;
+        }
+  
+        setListings([]);
+        fetchListings();
+      } catch (error) {
+        console.error('Error during cancel sale process:', error);
+      } finally {
+      }
+    } else {
+      console.error('No listing ID available to cancel.');
+    }
+  };
+  
+
+  const getSignature = async (message) => {
+    console.log(provider);
+    console.log(account);
+    if (!provider || !account) {
+      console.log("No provider or account");
+      return null;
+    }
+
+    try {
+      const signer = await provider.getSigner(account);
+      console.log("signer: ", signer);
+      const signature = await signer.signMessage(message);
+      console.log('Signature:', signature);
+      return signature;
+    } catch (error) {
+      console.error('Error signing message:', error);
+      setMintingStatus('failed');
+      setMintingMessage('Failed to generate signature.');
+      return null;
+    }
+  };
+
+
+  const handleListNFT = async () => {
+
     const tokenId = nftDetails?.id;
     const seller = walletAddress;
     const price = parseFloat(listPrice);
@@ -647,28 +583,6 @@ function NFTDetailsPage() {
           return;
       }
   
-      // const listingId = event.args[0].toString();
-
-      // const dbResponse = await fetch('http://localhost:5000/api/listings', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     listingId,
-      //     tokenId,
-      //     price,
-      //     seller,
-      //     isSold,
-      //   }),
-      // });
-  
-      // if (dbResponse.ok) {
-      //   const data = await dbResponse.json();
-      //   console.log('Listing added to DB successfully:', data.message);
-      //   fetchListings();
-      // } else {
-      //   const errorData = await dbResponse.json();
-      //   console.error('Failed to create DB listing:', errorData.error);
-      // }
       fetchListings();
     } catch (error) {
       console.error('Error during listing process:', error);
@@ -679,7 +593,6 @@ function NFTDetailsPage() {
 
 
 const handleCreateAuction = async () => {
-  console.log('Create NFT auction with price:', defaultPrice);
 
   const tokenId = nftDetails?.id;
   const seller = walletAddress;
@@ -763,14 +676,14 @@ const handleCreateAuction = async () => {
     const tx2 = await nftContract.setApprovalForAll(auctionAddress, true);
     await tx2.wait();
 
-    console.log(`✅ Token ID ${tokenId} approved for auction at ${auctionAddress}`);
+    console.log(`Token ID ${tokenId} approved for auction at ${auctionAddress}`);
 
     const auctionContract = await getAuctionContract(auctionAddress);
 
     const tx3 = await auctionContract.startAuction(walletAddress);
     await tx3.wait();
 
-    console.log("✅ Auction started");
+    console.log("Auction started");
     
 
     try {
@@ -798,7 +711,6 @@ const handleCreateAuction = async () => {
       });
 
       if (response.ok) {
-        console.log("Okay!");
       } else if (response.status === 409) {
         const data = await response.json();
         setErrorMessage(data.error);
@@ -865,7 +777,7 @@ const handleCancelAuction = async () => {
     const tx = await factory.deleteAuction(auctionId);
     await tx.wait();
 
-    console.log("✅ Auction cancelled.");
+    console.log("Auction cancelled.");
 
     fetchAuction();
   } catch (err) {
@@ -918,7 +830,7 @@ const handleFinalizeAuction = async () => {
     const tx = await factory.auctionOver(auctionId);
     await tx.wait();
 
-    console.log("✅ Auction completed!");
+    console.log("Auction completed!");
 
     fetchAuction();
   } catch (err) {
@@ -989,7 +901,7 @@ const handleSubmitBid = async () => {
     const tx = await auctionContract.placeBid({ value: bidAmountEth });
     const receipt = await tx.wait();
 
-    console.log("✅ Bid placed. Tx hash:", tx.hash);
+    console.log("Bid placed. Tx hash:", tx.hash);
 
     fetchAuction();
 
@@ -1056,8 +968,6 @@ const handleInstantBuy = async () => {
     alert('Error with instant buy. See console for details.');
   }
 };
-
-
 
   
 
