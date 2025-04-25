@@ -33,7 +33,6 @@ export const WalletProvider = ({ children }) => {
     const checkConnection = async () => {
       if (window.ethereum) {
         try {
-          console.log(window.ethereum);
           const provider = new ethers.BrowserProvider(window.ethereum);
           const accounts = await provider.listAccounts();
           if (accounts.length > 0) {
