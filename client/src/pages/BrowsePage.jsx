@@ -9,10 +9,32 @@ function BrowsePage() {
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sortOption, setSortOption] = useState('id');
+  const [sortOrder, setSortOrder] = useState('asc');
   const { isConnected, walletAddress, walletAddress: account, provider, signer } = useWallet();
 
-  
+  const sortNFTs = (nfts) => {
+    const sortedNFTs = [...nfts];
+    sortedNFTs.sort((a, b) => {
+      let comparison = 0;
 
+      if (sortOption === 'id') {
+        comparison = a.id - b.id;
+      } else if (sortOption === 'name') {
+        comparison = a.name.localeCompare(b.name); 
+      } else if (sortOption === 'owner') {
+        comparison = a.owner.localeCompare(b.owner);
+      } else if (sortOption === 'creator') {
+        comparison = a.creator.localeCompare(b.creator);
+      } else if (sortOption === 'likes') {
+        comparison = (a.likes || 0) - (b.likes || 0);
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    return sortedNFTs;
+  };
+  
   useEffect(() => {
 
     const fetchNFTsWithMetadata = async () => {
@@ -89,6 +111,15 @@ function BrowsePage() {
                     }
                   }
 
+                  let likes = 0;
+                  try {
+                    const response = await fetch(`http://localhost:5000/api/likes/nft/${nft.token_id}`);
+                    const data = await response.json();
+                    likes = data.like_count;
+                  } catch (error) {
+                    console.error('Error fetching likes:', error);
+                  }
+
                   return {
                     imageUrl: imageUri ? `http://localhost:8080/ipfs/${imageUri}` : null,
                     id: nft.token_id,
@@ -97,6 +128,7 @@ function BrowsePage() {
                     owner: ownerString,
                     creator: creatorString,
                     created_at: formattedDate,
+                    likes: likes,
                   };
                 } else {
                   console.error('Failed to fetch metadata for NFT:', nft);
@@ -108,6 +140,7 @@ function BrowsePage() {
                     owner: 'Error',
                     creator: 'Error',
                     created_at: nft.created_at,
+                    likes: 0,
                   };
                 }
               } catch (error) {
@@ -119,6 +152,7 @@ function BrowsePage() {
                   description: 'Error loading description',
                   creator: 'Error',
                   created_at: nft.created_at,
+                  likes: 0,
                 };
               }
             })
@@ -137,6 +171,12 @@ function BrowsePage() {
 
     fetchNFTsWithMetadata();
   }, [walletAddress]);
+
+  useEffect(() => {
+    if (nfts.length > 0) {
+      setNfts(sortNFTs(nfts));
+    }
+  }, [sortOption, sortOrder]);
 
   const getNFTABI = async () => {
     const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
@@ -163,6 +203,28 @@ function BrowsePage() {
   return (
     <div style={{ height: '100vh', overflowY: 'auto', padding: '20px', backgroundColor: 'white' }}>
       <h1>Browse NFTs</h1>
+      <div style={{ marginBottom: '20px' }}>
+        <label>Sort by: </label>
+        <select
+          value={sortOption}
+          onChange={(e) => setSortOption(e.target.value)}
+        >
+          <option value="id">ID</option>
+          <option value="name">Name</option>
+          <option value="owner">Owner</option>
+          <option value="creator">Creator</option>
+          <option value="likes">Likes</option>
+        </select>
+
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          style={{ marginLeft: '10px' }}
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {nfts.length > 0 ? (
           nfts.map((nft) => (
@@ -175,7 +237,6 @@ function BrowsePage() {
               owner={nft.owner}
               creator={nft.creator}
               created_at={nft.created_at}
-              likes={nft.likes}
             />
           ))
         ) : (
