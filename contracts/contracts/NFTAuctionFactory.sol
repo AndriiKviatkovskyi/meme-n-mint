@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./NFTAuction.sol";
@@ -17,6 +17,17 @@ contract NFTAuctionFactory {
 
     Counters.Counter private auctionCounter;
 
+    /**
+     * @notice Creates a new NFT auction
+     * @dev Deploys a new NFTAuction contract and registers it in the factory
+     * @param _nftContract The address of the NFT contract being auctioned
+     * @param _defaultPrice The starting bid for the auction
+     * @param _startTime The start time of the auction
+     * @param _endTime The end time of the auction
+     * @param _tokenId The ID of the token being auctioned
+     * @param _instantBuyPrice The price for the instant buy option
+     * @return auctionId The ID of the newly created auction
+     */
     function createAuction(
         address _nftContract,
         uint256 _defaultPrice,
@@ -48,6 +59,11 @@ contract NFTAuctionFactory {
         return auctionId;
     }
 
+    /**
+     * @notice Deletes an existing auction
+     * @dev Cancels the auction and removes it from the creator's list
+     * @param auctionId The ID of the auction to be deleted
+     */
     function deleteAuction(uint256 auctionId) external {
         require(address(auctions[auctionId]) != address(0), "Auction does not exist");
 
@@ -64,6 +80,11 @@ contract NFTAuctionFactory {
         emit AuctionDeleted(auctionId);
     }
 
+    /**
+     * @notice Finalizes an auction after it ends and transfers the NFT to the winner
+     * @dev This function ensures the highest bidder receives the NFT
+     * @param auctionId The ID of the auction to finalize
+     */
     function auctionOver(uint256 auctionId) external {
         require(address(auctions[auctionId]) != address(0), "Auction does not exist");
 
@@ -79,6 +100,11 @@ contract NFTAuctionFactory {
         emit AuctionOver(auctionId);
     }
 
+    /**
+     * @notice Ends the auction instantly without a winner (e.g., auction was cancelled or no bids)
+     * @dev Deletes auction details without processing a bid
+     * @param auctionId The ID of the auction to end
+     */
     function auctionOverInstantly(uint256 auctionId) external {
         require(address(auctions[auctionId]) != address(0), "Auction does not exist");
 
@@ -91,6 +117,19 @@ contract NFTAuctionFactory {
         emit AuctionOver(auctionId);
     }
 
+    /**
+     * @notice Retrieves detailed information about an auction
+     * @param auctionId The ID of the auction to retrieve information for
+     * @return owner The address of the auction creator
+     * @return defaultPrice The starting bid for the auction
+     * @return startTime The start time of the auction
+     * @return endTime The end time of the auction
+     * @return tokenId The token ID of the auctioned NFT
+     * @return instantBuyPrice The price for the instant buy option
+     * @return highestBidder The address of the highest bidder
+     * @return highestBid The highest bid amount
+     * @return auctionEnded Whether the auction has ended
+     */
     function getAuctionInfo(uint256 auctionId) external view returns (
         address owner,
         uint256 defaultPrice,
@@ -120,6 +159,11 @@ contract NFTAuctionFactory {
         );
     }
 
+    /**
+     * @notice Removes an auction from a creator's list of auctions
+     * @param creator The address of the creator
+     * @param auctionId The ID of the auction to remove
+     */
     function _removeAuctionFromCreator(address creator, uint256 auctionId) internal {
         uint256[] storage creatorAuctions = auctionsByCreator[creator];
         for (uint256 i = 0; i < creatorAuctions.length; i++) {
@@ -129,19 +173,31 @@ contract NFTAuctionFactory {
                 break;
             }
         }
-    }   
+    }
 
+    /**
+     * @notice Retrieves the address of the auction contract by its ID
+     * @param auctionId The ID of the auction
+     * @return The address of the auction contract
+     */
     function getAuctionAddress(uint256 auctionId) external view returns (address) {
         return address(auctions[auctionId]);
     }
 
-
+    /**
+     * @notice Retrieves the total number of auctions created
+     * @return The number of auctions created so far
+     */
     function getAuctionCount() external view returns (uint256) {
         return auctionCounter.current();
     }
 
+    /**
+     * @notice Retrieves all auctions created by a specific creator
+     * @param creator The address of the auction creator
+     * @return A list of auction IDs created by the specified creator
+     */
     function getAuctionsByCreator(address creator) external view returns (uint256[] memory) {
         return auctionsByCreator[creator];
     }
-
 }

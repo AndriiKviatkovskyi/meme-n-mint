@@ -7,7 +7,7 @@ const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.9",
+  solidity: "0.8.26",
   networks: {
     amoy: {
       url: AMOY_RPC_URL,

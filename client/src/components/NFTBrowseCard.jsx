@@ -16,6 +16,10 @@ function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, create
     ? owner.slice(0, 24) + '...'
     : owner;
 
+  const shortDescription = description && description.length > 24
+    ? description.slice(0, 24) + '...'
+    : description;
+
   useEffect(() => {
     const fetchLikes = async () => {
       try {
@@ -81,7 +85,7 @@ function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, create
       <div style={contentStyle}>
         <h3 style={idStyle}>{id || 'Untitled'}</h3>
         <h3 style={nameStyle}>{name || 'Untitled'}</h3>
-        <p style={descriptionStyle}>{description || 'No description provided.'}</p>
+        <p style={descriptionStyle}>{shortDescription || 'No description provided.'}</p>
         <p style={ownerStyle}>Owner:</p>
         <p style={ownerStyle}>{shortOwner}</p>
         <p style={creatorStyle}>Creator:</p>
