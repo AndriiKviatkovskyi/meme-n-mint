@@ -1,6 +1,4 @@
 import express from 'express';
-import { ethers } from 'ethers';
-import sharp from 'sharp';
 import pool from '../database/database.js';
 
 const router = express.Router();

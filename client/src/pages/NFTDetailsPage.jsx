@@ -493,8 +493,6 @@ function NFTDetailsPage() {
   
 
   const getSignature = async (message) => {
-    console.log(provider);
-    console.log(account);
     if (!provider || !account) {
       console.log("No provider or account");
       return null;
@@ -559,7 +557,6 @@ function NFTDetailsPage() {
       const contract = await getMarketplaceContract();
 
       const nftContract = await getNFTContract();
-
       
       const isApproved = await nftContract.isApprovedForAll(walletAddress, MARKETPLACE_CONTRACT_ADDRESS);
 

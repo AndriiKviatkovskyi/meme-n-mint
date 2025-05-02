@@ -21,7 +21,7 @@ function LoginPage() {
       width: '100vw',
       backgroundColor: 'white',
     }}>
-      <h1 style={{ marginBottom: '20px' }}>Welcome to Meme Marketplace!</h1>
+      <h1 style={{ marginBottom: '20px' }}>Welcome to Meme-n-Mint!</h1>
 
       <MetamaskConnection />
 

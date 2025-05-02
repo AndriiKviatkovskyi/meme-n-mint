@@ -18,51 +18,6 @@ app.use('/', profileRoutes);
 app.use('/', likesRoutes);
 app.use('/', listingsRoutes);
 
-// async function createNftTable() {
-//   try {
-//     const nftTable = `
-//       CREATE TABLE IF NOT EXISTS nfts (
-//           token_id INTEGER PRIMARY KEY,
-//           owner VARCHAR(255) NOT NULL,
-//           metadata TEXT NOT NULL,
-//           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-//           updated_at TIMESTAMP WITH TIME ZONE
-//       );
-//     `;
-//     await pool.query(nftTable);
-//     console.log('NFT table created or already exists.');
-
-//     const updateTrigger = `
-//       CREATE OR REPLACE FUNCTION update_updated_at()
-//       RETURNS TRIGGER AS $$
-//       BEGIN
-//           NEW.updated_at = now();
-//           RETURN NEW;
-//       END;
-//       $$ LANGUAGE plpgsql;
-//     `;
-//     await pool.query(updateTrigger);
-//     console.log('Function update_updated_at created or replaced.');
-
-//     const nftUpdateTrigger = `
-//       DO $$ 
-//       BEGIN
-//         IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_nfts_updated_at') THEN
-//           CREATE TRIGGER update_nfts_updated_at
-//           BEFORE UPDATE ON nfts
-//           FOR EACH ROW
-//           EXECUTE FUNCTION update_updated_at();
-//         END IF;
-//       END $$;
-//     `;
-
-//     await pool.query(nftUpdateTrigger);
-//     console.log('Trigger update_nfts_updated_at created or already exists.');
-//   } catch (error) {
-//     console.error('Error creating NFT table:', error);
-//   }
-// }
-
 async function createUsernamesTable() {
   try {
     const usernamesTable = `
@@ -96,28 +51,83 @@ async function createLikesTable() {
   }
 }
 
-// async function createListingsTable() {
-//   try {
-//     const listingsTable = `
-//       CREATE TABLE IF NOT EXISTS nft_listings (
-//         listingId INTEGER PRIMARY KEY,
-//         tokenId INTEGER NOT NULL,
-//         price DECIMAL(18, 4) NOT NULL,
-//         seller VARCHAR(255) NOT NULL,
-//         isSold BOOLEAN DEFAULT FALSE
-//       );
-//     `;
-//     await pool.query(listingsTable);
-//     console.log('NFT Listings table created or already exists.');
-//   } catch (error) {
-//     console.error('Error creating NFT Listings table:', error);
-//   }
-// }
+async function createMintedTokensTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS minted_tokens (
+        token_id BIGINT PRIMARY KEY,
+        token_uri TEXT,
+        marketplace_address VARCHAR(255),
+        minter VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('minted_tokens table ready.');
+  } catch (error) {
+    console.error('Error creating minted_tokens table:', error);
+  }
+}
 
-//createNftTable();
+async function createListingsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS listings (
+        listing_id BIGINT PRIMARY KEY,
+        nft_contract VARCHAR(255),
+        token_id BIGINT,
+        price NUMERIC,
+        seller VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('listings table ready.');
+  } catch (error) {
+    console.error('Error creating listings table:', error);
+  }
+}
+
+async function createPurchasesTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS purchases (
+        listing_id BIGINT PRIMARY KEY,
+        nft_contract VARCHAR(255),
+        token_id BIGINT,
+        price NUMERIC,
+        buyer VARCHAR(255),
+        seller VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('purchases table ready.');
+  } catch (error) {
+    console.error('Error creating purchases table:', error);
+  }
+}
+
+async function createCancellationsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cancellations (
+        listing_id BIGINT PRIMARY KEY,
+        nft_contract VARCHAR(255),
+        token_id BIGINT,
+        seller VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('cancellations table ready.');
+  } catch (error) {
+    console.error('Error creating cancellations table:', error);
+  }
+}
+
 createUsernamesTable();
 createLikesTable();
-//createListingsTable();
+createMintedTokensTable();
+createListingsTable();
+createPurchasesTable();
+createCancellationsTable();
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
