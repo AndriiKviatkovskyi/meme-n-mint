@@ -162,7 +162,7 @@ contract NFTAuction is ERC721, Ownable {
      * @dev Refunds the highest bidder if applicable
      * @dev Requires the sender to pay the exact instant buy price
      */
-    function buyInstantly() external payable auctionNotEnded auctionNotCancelled {
+    function buyInstantly(address buyer) external payable auctionNotEnded auctionNotCancelled {
         require(instantBuyPrice > 0, "Instant buy price is not set");
         require(msg.value == instantBuyPrice, "Incorrect instant buy price");
 
@@ -173,9 +173,9 @@ contract NFTAuction is ERC721, Ownable {
         payable(creator).transfer(instantBuyPrice); // Transfer payment to creator
         auctionEnded = true;
 
-        nftContract.transferFrom(address(this), msg.sender, tokenId); // Transfer NFT to buyer
+        nftContract.transferFrom(address(this), buyer, tokenId); // Transfer NFT to buyer
 
-        emit InstantBuy(msg.sender, instantBuyPrice);
+        emit InstantBuy(buyer, instantBuyPrice);
     }
 
     /**

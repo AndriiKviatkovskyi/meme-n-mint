@@ -3,7 +3,7 @@ import { useWallet } from '../context/WalletContext';
 import NFTBrowseCard from '../components/NFTBrowseCard';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import {NFT_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY} from '../constants/constants';
+import { NFT_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY } from '../constants/constants';
 
 function BrowsePage() {
   const [nfts, setNfts] = useState([]);
@@ -21,7 +21,7 @@ function BrowsePage() {
       if (sortOption === 'id') {
         comparison = a.id - b.id;
       } else if (sortOption === 'name') {
-        comparison = a.name.localeCompare(b.name); 
+        comparison = a.name.localeCompare(b.name);
       } else if (sortOption === 'owner') {
         comparison = a.owner.localeCompare(b.owner);
       } else if (sortOption === 'creator') {
@@ -34,9 +34,8 @@ function BrowsePage() {
     });
     return sortedNFTs;
   };
-  
-  useEffect(() => {
 
+  useEffect(() => {
     const fetchNFTsWithMetadata = async () => {
       const nftData = [];
       if (!provider) {
@@ -49,23 +48,23 @@ function BrowsePage() {
           const tokenId = i;
           const [metadata, owner] = await Promise.all([
             nftContract.tokenURI(tokenId),
-            nftContract.ownerOf(tokenId)
+            nftContract.ownerOf(tokenId),
           ]);
           nftData.push({
             token_id: tokenId,
             owner,
-            metadata
+            metadata,
           });
         }
         if (total > -1) {
           const transformedNFTs = await Promise.all(
             nftData.map(async (nft) => {
               try {
-                const uri = nft.metadata.replace("ipfs://", "");
+                const uri = nft.metadata.replace('ipfs://', '');
                 const metadataResponse = await fetch(`http://localhost:8080/ipfs/${uri}`);
                 if (metadataResponse.ok) {
                   const metadata = await metadataResponse.json();
-                  const imageUri = metadata.image.replace("ipfs://", "");
+                  const imageUri = metadata.image.replace('ipfs://', '');
                   const timestamp = metadata.creationTime;
 
                   const dateObject = new Date(timestamp);
@@ -178,12 +177,12 @@ function BrowsePage() {
 
   const getNFTABI = async () => {
     const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
-        const response = await axios.get(url);
-        if (response.data.status !== "1") {
-            throw new Error("Failed to fetch ABI from Polygonscan");
-        }
-        return JSON.parse(response.data.result);
-  }
+    const response = await axios.get(url);
+    if (response.data.status !== '1') {
+      throw new Error('Failed to fetch ABI from Polygonscan');
+    }
+    return JSON.parse(response.data.result);
+  };
 
   async function getNFTContract() {
     const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
@@ -201,28 +200,56 @@ function BrowsePage() {
   return (
     <div style={{ height: '100vh', overflowY: 'auto', padding: '20px', backgroundColor: 'white' }}>
       <h1>Browse NFTs</h1>
-      <div style={{ marginBottom: '20px' }}>
-        <label>Sort by: </label>
-        <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value)}
-        >
-          <option value="id">ID</option>
-          <option value="name">Name</option>
-          <option value="owner">Owner</option>
-          <option value="creator">Creator</option>
-          <option value="likes">Likes</option>
-        </select>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '20px',
+          marginBottom: '20px',
+          backgroundColor: '#f4f4f4',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label style={{ fontWeight: 'bold' }}>Sort by: </label>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            style={{
+              padding: '8px',
+              borderRadius: '5px',
+              border: '1px solid #ccc',
+              backgroundColor: '#fff',
+            }}
+          >
+            <option value="id">ID</option>
+            <option value="name">Name</option>
+            <option value="owner">Owner</option>
+            <option value="creator">Creator</option>
+            <option value="likes">Likes</option>
+          </select>
+        </div>
 
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          style={{ marginLeft: '10px' }}
-        >
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label style={{ fontWeight: 'bold' }}>Order: </label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            style={{
+              padding: '8px',
+              borderRadius: '5px',
+              border: '1px solid #ccc',
+              backgroundColor: '#fff',
+            }}
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
       </div>
+
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {nfts.length > 0 ? (
           nfts.map((nft) => (

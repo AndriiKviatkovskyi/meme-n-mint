@@ -11,9 +11,36 @@ contract NFTAuctionFactory {
     mapping(uint256 => uint256) public auctionsByTokenId;
     mapping(address => uint256[]) public auctionsByCreator;
 
-    event AuctionCreated(uint256 auctionId, address auctionAddress);
-    event AuctionDeleted(uint256 auctionId);
-    event AuctionOver(uint256 auctionId);
+    event AuctionCreated(
+        uint256 indexed auctionId,
+        address indexed auctionAddress,
+        address indexed creator,
+        uint256 tokenId,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 defaultPrice,
+        uint256 instantBuyPrice
+    );
+
+    event AuctionDeleted(
+        uint256 indexed auctionId,
+        address indexed creator,
+        uint256 tokenId
+    );
+
+    event AuctionOver(
+        uint256 indexed auctionId,
+        address indexed winner,
+        uint256 highestBid,
+        uint256 tokenId
+    );
+
+    event AuctionOverInstantly(
+        uint256 indexed auctionId,
+        address indexed winner,
+        uint256 price,
+        uint256 tokenId
+    );
 
     Counters.Counter private auctionCounter;
 
@@ -54,7 +81,16 @@ contract NFTAuctionFactory {
         auctionsByTokenId[_tokenId] = auctionId;
         auctionsByCreator[msg.sender].push(auctionId);
 
-        emit AuctionCreated(auctionId, address(newAuction));
+        emit AuctionCreated(
+            auctionId,
+            address(newAuction),
+            msg.sender,
+            _tokenId,
+            _startTime,
+            _endTime,
+            _defaultPrice,
+            _instantBuyPrice
+        );
 
         return auctionId;
     }
@@ -77,7 +113,11 @@ contract NFTAuctionFactory {
         delete auctions[auctionId];
         delete auctionsByTokenId[tokenId];
 
-        emit AuctionDeleted(auctionId);
+        emit AuctionDeleted(
+            auctionId,
+            auction.creator(),
+            tokenId
+        );
     }
 
     /**
@@ -92,29 +132,46 @@ contract NFTAuctionFactory {
 
         uint256 tokenId = auction.tokenId();
 
+        address winner = auction.highestBidder();
+        uint256 finalPrice = auction.highestBid();  
+
         auction.acceptBid(msg.sender);
 
         _removeAuctionFromCreator(auction.creator(), auctionId);
         delete auctionsByTokenId[tokenId];
 
-        emit AuctionOver(auctionId);
+        emit AuctionOver(
+            auctionId,
+            winner,
+            finalPrice,
+            tokenId
+        );
     }
 
     /**
-     * @notice Ends the auction instantly without a winner (e.g., auction was cancelled or no bids)
+     * @notice Ends the auction instantly via instant buy
      * @dev Deletes auction details without processing a bid
      * @param auctionId The ID of the auction to end
      */
-    function auctionOverInstantly(uint256 auctionId) external {
+    function auctionOverInstantly(uint256 auctionId) external payable{
         require(address(auctions[auctionId]) != address(0), "Auction does not exist");
 
         NFTAuction auction = auctions[auctionId];
 
         uint256 tokenId = auction.tokenId();
+        uint256 finalPrice = auction.instantBuyPrice(); 
 
+        auction.buyInstantly{value: msg.value}(msg.sender);
+
+        _removeAuctionFromCreator(auction.creator(), auctionId);
         delete auctionsByTokenId[tokenId];
 
-        emit AuctionOver(auctionId);
+        emit AuctionOverInstantly(
+            auctionId,
+            msg.sender,
+            finalPrice,
+            tokenId
+        );
     }
 
     /**

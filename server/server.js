@@ -5,7 +5,9 @@ import mintRoutes from './routes/nftRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import likesRoutes from './routes/likesRoutes.js';
 import listingsRoutes from './routes/listingsRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
 import pool from './database/database.js';
+import { registerEventListeners } from './listeners/eventListeners.js';
 
 const app = express();
 const PORT = 5000;
@@ -17,6 +19,7 @@ app.use('/', mintRoutes);
 app.use('/', profileRoutes);
 app.use('/', likesRoutes);
 app.use('/', listingsRoutes);
+app.use('/', eventRoutes);
 
 async function createUsernamesTable() {
   try {
@@ -122,12 +125,73 @@ async function createCancellationsTable() {
   }
 }
 
-createUsernamesTable();
-createLikesTable();
-createMintedTokensTable();
-createListingsTable();
-createPurchasesTable();
-createCancellationsTable();
+async function createAuctionsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS auctions (
+        auction_id BIGINT PRIMARY KEY,
+        auction_address VARCHAR(255),
+        creator VARCHAR(255),
+        token_id BIGINT,
+        start_time TIMESTAMP,
+        end_time TIMESTAMP,
+        default_price BIGINT,
+        instant_buy_price BIGINT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('auctions table ready.');
+  } catch (error) {
+    console.error('Error creating auctions table:', error);
+  }
+}
+
+async function createAuctionDeletionsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS auction_deletions (
+        auction_id BIGINT PRIMARY KEY,
+        creator VARCHAR(255),
+        token_id BIGINT,
+        deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('auction_deletions table ready.');
+  } catch (error) {
+    console.error('Error creating auction_deletions table:', error);
+  }
+}
+
+async function createAuctionResultsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS auction_results (
+        auction_id BIGINT PRIMARY KEY,
+        winner VARCHAR(255),
+        highest_bid BIGINT,
+        token_id BIGINT,
+        type VARCHAR(10), -- 'bid' or 'instant'
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('auction_results table ready.');
+  } catch (error) {
+    console.error('Error creating auction_results table:', error);
+  }
+}
+
+
+await createUsernamesTable();
+await createLikesTable();
+await createMintedTokensTable();
+await createListingsTable();
+await createPurchasesTable();
+await createCancellationsTable();
+await createAuctionsTable();
+await createAuctionDeletionsTable();
+await createAuctionResultsTable();
+
+await registerEventListeners();
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

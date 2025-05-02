@@ -16,6 +16,7 @@ function NFTDetailsPage() {
   const [listings, setListings] = useState([]);
   const [auction, setAuction] = useState(null);
   const [auctionAddress, setAuctionAddress] = useState(null);
+  const [auctionId, setAuctionId] = useState(null);
   const [bids, setBids] = useState([]);
   const [isPastFinish, setIsPastFinish] = useState(false);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
@@ -212,6 +213,7 @@ function NFTDetailsPage() {
       if(!auctionEnded){
         setAuction(auctionData);
         setAuctionAddress(auctionAddressFromFactory);
+        setAuctionId(auctionId);
       }
       
     } catch (err) {
@@ -921,7 +923,7 @@ const handleInstantBuy = async () => {
       return;
     }
 
-    const instantBuyPriceEth = ethers.parseEther(instantBuyPrice.toString());
+    const instantBuyPricePol = ethers.parseEther(instantBuyPrice.toString());
 
     const messageToSign = JSON.stringify({
       buyer,
@@ -951,14 +953,15 @@ const handleInstantBuy = async () => {
 
     console.log('Signature verified. Submitting instant buy...');
 
-    const auctionContract = await getAuctionContract(auctionAddress);
+    const auctionFactoryContract = await getAuctionFactoryContract();
 
-    const tx = await auctionContract.buyInstantly({ value: instantBuyPriceEth });
+    const tx = await auctionFactoryContract.auctionOverInstantly(auctionId, { value: instantBuyPricePol });
     const receipt = await tx.wait();
 
     console.log("✅ NFT bought instantly. Tx hash:", tx.hash);
 
     fetchAuction();
+    fetchNFTDetailsWithMetadata();
 
   } catch (error) {
     console.error('Error executing instant buy:', error);
@@ -1125,6 +1128,7 @@ const handleInstantBuy = async () => {
           borderRight: '1px solid #eee',
           display: 'flex',
           flexDirection: 'column',
+          alignItems: 'center',
           gap: '0px',
         }}
       >
