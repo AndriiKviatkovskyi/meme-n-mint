@@ -24,6 +24,9 @@ contract NFTAuction is ERC721, Ownable {
     address public highestBidder;
     uint256 public highestBid;
 
+    address public charityWallet;
+    uint256 public constant CHARITY_PERCENT = 10; //Charity percentage
+
     struct Bid {
         address bidder;
         uint256 amount;
@@ -92,7 +95,8 @@ contract NFTAuction is ERC721, Ownable {
         uint256 _endTime,
         uint256 _tokenId,
         uint256 _instantBuyPrice,
-        address _creator
+        address _creator,
+        address payable _charityWallet
     ) ERC721("NFTAuction", "NA") {
         nftContract = IERC721(_nftContract);
         defaultPrice = _defaultPrice;
@@ -103,6 +107,7 @@ contract NFTAuction is ERC721, Ownable {
         auctionCancelled = false;
         auctionEnded = false;
         creator = _creator;
+        charityWallet = _charityWallet;
     }
 
     /**
@@ -127,7 +132,8 @@ contract NFTAuction is ERC721, Ownable {
         require(_creator == creator, "Only the auction creator can cancel the auction");
 
         if (highestBidder != address(0)) {
-            payable(highestBidder).transfer(highestBid); // Refund highest bidder
+            (bool success, ) = payable(highestBidder).call{value: highestBid}("");
+            require(success, "Transfer failed"); // Refund highest bidder
         }
 
         auctionCancelled = true;
@@ -146,7 +152,8 @@ contract NFTAuction is ERC721, Ownable {
         require(msg.value > highestBid, "Bid must be higher than the current highest bid");
 
         if (highestBidder != address(0)) {
-            payable(highestBidder).transfer(highestBid); // Refund previous highest bidder
+            (bool success, ) = payable(highestBidder).call{value: highestBid}("");
+            require(success, "Transfer failed"); // Refund highest bidder
         }
 
         highestBidder = msg.sender;
@@ -167,11 +174,18 @@ contract NFTAuction is ERC721, Ownable {
         require(msg.value == instantBuyPrice, "Incorrect instant buy price");
 
         if (highestBidder != address(0)) {
-            payable(highestBidder).transfer(highestBid); // Refund highest bidder
+            (bool success, ) = payable(highestBidder).call{value: highestBid}("");
+            require(success, "Transfer failed"); // Refund highest bidder
         }
 
-        payable(creator).transfer(instantBuyPrice); // Transfer payment to creator
-        auctionEnded = true;
+        uint256 charityAmount = (instantBuyPrice * CHARITY_PERCENT) / 100;
+        uint256 creatorAmount = instantBuyPrice - charityAmount;
+
+        (bool successCreator, ) = payable(creator).call{value: creatorAmount}("");
+        require(successCreator, "Payment to creator failed");
+
+        (bool successCharity, ) = payable(charityWallet).call{value: charityAmount}("");
+        require(successCharity, "Payment to charity failed");
 
         nftContract.transferFrom(address(this), buyer, tokenId); // Transfer NFT to buyer
 
@@ -193,7 +207,14 @@ contract NFTAuction is ERC721, Ownable {
             emit AuctionEnded(address(0), 0, tokenId);
         } else {
             // Transfer funds and NFT to winner
-            payable(creator).transfer(highestBid);
+            uint256 charityAmount = (highestBid * CHARITY_PERCENT) / 100;
+            uint256 creatorAmount = highestBid - charityAmount;
+
+            (bool successCreator, ) = payable(creator).call{value: creatorAmount}("");
+            require(successCreator, "Payment to creator failed");
+
+            (bool successCharity, ) = payable(charityWallet).call{value: charityAmount}("");
+            require(successCharity, "Payment to charity failed");
             nftContract.transferFrom(address(this), highestBidder, tokenId);
             auctionEnded = true;
 

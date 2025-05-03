@@ -3,7 +3,10 @@ import { useWallet } from '../context/WalletContext';
 import NFTBrowseCard from '../components/NFTBrowseCard';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import { NFT_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY } from '../constants/constants';
+import { NFT_CONTRACT_ADDRESS, MARKETPLACE_CONTRACT_ADDRESS, AUCTION_FACTORY_CONTRACT_ADDRESS, POLYGONSCAN_API_KEY } from '../constants/constants';
+import nftABI from '../abiReserves/NFT.json';
+import marketplaceABI from '../abiReserves/Marketplace.json';
+import auctionFactoryABI from '../abiReserves/NFTAuctionFactory.json';
 
 function BrowsePage() {
   const [nfts, setNfts] = useState([]);
@@ -11,6 +14,8 @@ function BrowsePage() {
   const [error, setError] = useState(null);
   const [sortOption, setSortOption] = useState('id');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterOption, setFilterOption] = useState('all');
   const { isConnected, walletAddress, walletAddress: account, provider, signer } = useWallet();
 
   const sortNFTs = (nfts) => {
@@ -117,6 +122,20 @@ function BrowsePage() {
                     console.error('Error fetching likes:', error);
                   }
 
+                  let isListedOrAuctioned = 0;
+                  const marketplaceContract = await getMarketplaceContractForView();
+                  const rawListingId = await marketplaceContract.getListingId(nft.token_id);
+                  if(Number(rawListingId) !== 0){
+                    isListedOrAuctioned = 1;
+                  }
+
+                  const factoryContract = await getAuctionFactoryContractForView();
+                  const auctionId = await factoryContract.auctionsByTokenId(nft.token_id);
+              
+                  if (Number(auctionId) !== 0) {
+                    isListedOrAuctioned = 2;
+                  }
+
                   return {
                     imageUrl: imageUri ? `http://localhost:8080/ipfs/${imageUri}` : null,
                     id: nft.token_id,
@@ -126,6 +145,7 @@ function BrowsePage() {
                     creator: creatorString,
                     created_at: formattedDate,
                     likes: likes,
+                    isListedOrAuctioned: isListedOrAuctioned,
                   };
                 } else {
                   console.error('Failed to fetch metadata for NFT:', nft);
@@ -138,6 +158,7 @@ function BrowsePage() {
                     creator: 'Error',
                     created_at: nft.created_at,
                     likes: 0,
+                    isListedOrAuctioned: 0,
                   };
                 }
               } catch (error) {
@@ -150,6 +171,7 @@ function BrowsePage() {
                   creator: 'Error',
                   created_at: nft.created_at,
                   likes: 0,
+                  isListedOrAuctioned: 0,
                 };
               }
             })
@@ -175,18 +197,16 @@ function BrowsePage() {
     }
   }, [sortOption, sortOrder]);
 
-  const getNFTABI = async () => {
-    const url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${NFT_CONTRACT_ADDRESS}&apikey=${POLYGONSCAN_API_KEY}`;
-    const response = await axios.get(url);
-    if (response.data.status !== '1') {
-      throw new Error('Failed to fetch ABI from Polygonscan');
-    }
-    return JSON.parse(response.data.result);
-  };
-
   async function getNFTContract() {
-    const abi = await getNFTABI(NFT_CONTRACT_ADDRESS);
-    return new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider);
+    return new ethers.Contract(NFT_CONTRACT_ADDRESS, nftABI.abi, provider);
+  }
+
+  async function getMarketplaceContractForView() {
+      return new ethers.Contract(MARKETPLACE_CONTRACT_ADDRESS, marketplaceABI.abi, provider);
+  }
+
+  async function getAuctionFactoryContractForView() {
+      return new ethers.Contract(AUCTION_FACTORY_CONTRACT_ADDRESS, auctionFactoryABI.abi, provider);
   }
 
   if (loading) {
@@ -200,6 +220,7 @@ function BrowsePage() {
   return (
     <div style={{ height: '100vh', overflowY: 'auto', padding: '20px', backgroundColor: 'white' }}>
       <h1>Browse NFTs</h1>
+      
       <div
         style={{
           display: 'flex',
@@ -212,6 +233,42 @@ function BrowsePage() {
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
         }}
       >
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontWeight: 'bold' }}>Search: </label>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by ID, name, description, owner, creator"
+            style={{
+              flex: 1,
+              padding: '8px',
+              borderRadius: '5px',
+              border: '1px solid #ccc',
+              backgroundColor: '#fff',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label style={{ fontWeight: 'bold' }}>Filter: </label>
+          <select
+            value={filterOption}
+            onChange={(e) => setFilterOption(e.target.value)}
+            style={{
+              padding: '8px',
+              borderRadius: '5px',
+              border: '1px solid #ccc',
+              backgroundColor: '#fff',
+            }}
+          >
+            <option value="all">All</option>
+            <option value="listed">Listed</option>
+            <option value="auctioned">Auctioned</option>
+          </select>
+        </div>
+
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <label style={{ fontWeight: 'bold' }}>Sort by: </label>
           <select
@@ -252,7 +309,24 @@ function BrowsePage() {
 
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {nfts.length > 0 ? (
-          nfts.map((nft) => (
+          nfts
+            .filter((nft) => {
+              const matchesSearch =
+                searchTerm === '' ||
+                nft.id.toString().includes(searchTerm.toLowerCase()) ||
+                nft.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                nft.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                nft.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                nft.creator?.toLowerCase().includes(searchTerm.toLowerCase());
+
+              const matchesFilter =
+                filterOption === 'all' ||
+                (filterOption === 'listed' && nft.isListedOrAuctioned === 1) ||
+                (filterOption === 'auctioned' && nft.isListedOrAuctioned === 2);
+
+              return matchesSearch && matchesFilter;
+            })
+            .map((nft) => (
             <NFTBrowseCard
               key={nft.id}
               imageUrl={nft.imageUrl}
@@ -262,6 +336,7 @@ function BrowsePage() {
               owner={nft.owner}
               creator={nft.creator}
               created_at={nft.created_at}
+              listing={nft.isListedOrAuctioned}
             />
           ))
         ) : (

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 
-function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, created_at }) {
+function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, created_at, listing }) {
   const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const { walletAddress } = useWallet();
@@ -107,9 +107,23 @@ function NFTBrowseCard({ imageUrl, id, name, description, owner, creator, create
           {liked ? 'LOLed' : 'LOL'} {" : "} {likes}
         </button>
       </div>
-      <button onClick={handleViewDetailsClick} style={viewDetailsButtonStyle}>
-        View Details
-      </button>
+      {listing === 0 && (
+        <button onClick={handleViewDetailsClick} style={viewDetailsButtonStyle}>
+          View Details
+        </button>
+      )}
+
+      {listing === 1 && (
+        <button onClick={handleViewDetailsClick} style={viewDetailsButtonStyleListed}>
+          For Sale
+        </button>
+      )}
+
+      {listing === 2 && (
+        <button onClick={handleViewDetailsClick} style={viewDetailsButtonStyleAuctioned}>
+          Auctioned
+        </button>
+      )}
     </div>
   );
 }
@@ -203,6 +217,28 @@ const likeButtonStyle = {
 
 const viewDetailsButtonStyle = {
   backgroundColor: '#007bff',
+  color: 'white',
+  border: 'none',
+  padding: '10px 15px',
+  borderRadius: '5px',
+  cursor: 'pointer',
+  fontSize: '1em',
+  marginTop: '10px',
+};
+
+const viewDetailsButtonStyleListed = {
+  backgroundColor: '#8A2BE2',
+  color: 'white',
+  border: 'none',
+  padding: '10px 15px',
+  borderRadius: '5px',
+  cursor: 'pointer',
+  fontSize: '1em',
+  marginTop: '10px',
+};
+
+const viewDetailsButtonStyleAuctioned = {
+  backgroundColor: '#228B22',
   color: 'white',
   border: 'none',
   padding: '10px 15px',

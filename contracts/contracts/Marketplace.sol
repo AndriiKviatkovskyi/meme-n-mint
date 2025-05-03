@@ -11,6 +11,9 @@ contract Marketplace {
 
     Counters.Counter private _listingIdCounter;
 
+    address payable public charityWallet; //Charity wallet
+    uint256 public constant CHARITY_PERCENT = 10; //Charity percentage
+
     struct Listing {
         address nftContract;
         uint256 tokenId;
@@ -43,6 +46,10 @@ contract Marketplace {
         uint256 indexed tokenId,
         address seller
     );
+
+    constructor(address payable _charityWallet) {
+        charityWallet = _charityWallet;
+    }
 
     /**
      * @notice Lists an NFT for sale on the marketplace.
@@ -92,8 +99,14 @@ contract Marketplace {
 
         IERC721(nftContract).transferFrom(listing.seller, msg.sender, listing.tokenId);
 
-        (bool success, ) = payable(listing.seller).call{value: msg.value}("");
-        require(success, "Payment failed");
+        uint256 charityAmount = (msg.value * 10) / 100;
+        uint256 sellerAmount = msg.value - charityAmount;
+
+        (bool successSeller, ) = payable(listing.seller).call{value: sellerAmount}("");
+        require(successSeller, "Seller payment failed");
+
+        (bool successCharity, ) = charityWallet.call{value: charityAmount}("");
+        require(successCharity, "Charity payment failed");
 
         _listings[listingId].isSold = true;
         delete _tokenListingIds[tokenId];

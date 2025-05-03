@@ -1,11 +1,14 @@
 const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config();
 
 async function main() {
 
+  const charityAddress = process.env.CHARITY_WALLET;
+
   const Marketplace = await hre.ethers.getContractFactory("Marketplace");
-  const marketplace = await Marketplace.deploy();
+  const marketplace = await Marketplace.deploy(charityAddress);
   const marketplaceAddress = await marketplace.getAddress();
 
   console.log("Marketplace deployed to:", marketplaceAddress);
@@ -17,7 +20,7 @@ async function main() {
   console.log("NFT deployed to:", nftAddress);
 
   const NFTAuctionFactory = await hre.ethers.getContractFactory("NFTAuctionFactory");
-  const auctionFactory = await NFTAuctionFactory.deploy();
+  const auctionFactory = await NFTAuctionFactory.deploy(charityAddress);
   const auctionFactoryAddress = await auctionFactory.getAddress();
 
   console.log("NFTAuctionFactory deployed to:", auctionFactoryAddress);

@@ -7,6 +7,8 @@ import "./NFTAuction.sol";
 contract NFTAuctionFactory {
     using Counters for Counters.Counter;
 
+    address payable public charityWallet; //Charity wallet
+
     mapping(uint256 => NFTAuction) public auctions;
     mapping(uint256 => uint256) public auctionsByTokenId;
     mapping(address => uint256[]) public auctionsByCreator;
@@ -44,6 +46,10 @@ contract NFTAuctionFactory {
 
     Counters.Counter private auctionCounter;
 
+    constructor(address payable _charityWallet) {
+        charityWallet = _charityWallet;
+    }
+
     /**
      * @notice Creates a new NFT auction
      * @dev Deploys a new NFTAuction contract and registers it in the factory
@@ -71,7 +77,8 @@ contract NFTAuctionFactory {
             _endTime,
             _tokenId,
             _instantBuyPrice,
-            msg.sender
+            msg.sender,
+            charityWallet
         );
 
         auctionCounter.increment();

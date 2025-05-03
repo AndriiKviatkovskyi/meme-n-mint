@@ -31,7 +31,7 @@ function ActivityPage() {
 
         const formatPriceToPOL = (wei) => {
           const POL = wei / 1e18;
-          return POL.toFixed(4); 
+          return POL.toFixed(4);
         };
 
         const allActivities = [
@@ -95,9 +95,9 @@ function ActivityPage() {
   };
 
   return (
-    <div style={{ padding: '20px', backgroundColor: 'white' }}>
+    <div style={{ padding: '20px', backgroundColor: 'white', height: '100vh' }}>
       <h1>Marketplace Activity</h1>
-      
+
       <div style={{ marginBottom: '20px' }}>
         <label htmlFor="eventType" style={{ marginRight: '10px' }}>Filter by Event Type: </label>
         <select
@@ -122,29 +122,33 @@ function ActivityPage() {
           <option value="[AuctionResult]">AuctionResult</option>
         </select>
       </div>
-      
+
       {filteredActivities.length === 0 ? (
-        <h2>No event of such type has occured yet...</h2>
+        <h2>No event of such type has occurred yet...</h2>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc' }}>
-            <thead style={{ backgroundColor: '#1E90FF', color: 'white' }}>
+        <div style={{ border: '1px solid #ccc', borderRadius: '6px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ backgroundColor: '#1E90FF', color: 'white', position: 'sticky', top: 0, zIndex: 1 }}>
               <tr>
                 <th style={{ padding: '10px', textAlign: 'left' }}>Event Type</th>
                 <th style={{ padding: '10px', textAlign: 'left' }}>Message</th>
                 <th style={{ padding: '10px', textAlign: 'left' }}>Timestamp</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredActivities.map((activity, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td style={{ padding: '10px' }}>{activity.type}</td>
-                  <td style={{ padding: '10px' }}>{activity.message}</td>
-                  <td style={{ padding: '10px' }}>{new Date(activity.timestamp).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
           </table>
+          <div style={{ height: '60vh', overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {filteredActivities.map((activity, index) => (
+                  <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
+                    <td style={{ padding: '10px' }}>{activity.type}</td>
+                    <td style={{ padding: '10px' }}>{activity.message}</td>
+                    <td style={{ padding: '10px' }}>{new Date(activity.timestamp).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
